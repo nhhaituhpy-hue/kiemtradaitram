@@ -40,48 +40,51 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const storageKey = `checklistData-${categoryId}`;
 
   useEffect(() => {
-    let saved = localStorage.getItem(storageKey);
-    // fallback for the first demo compatibility
-    if (!saved && categoryId === "quan-ly-ky-thuat") {
-      saved = localStorage.getItem("techChecklistData");
-    }
+    // Luôn load data tĩnh trước
+    let defaultData: TechChecklistGroup[] = [];
+    if (categoryId === "quan-ly-ky-thuat") defaultData = [...mockTechChecklist];
+    else if (categoryId === "quan-ly-an-toan-sms") defaultData = [...mockSmsChecklist];
+    else if (categoryId === "an-toan-ve-sinh") defaultData = [...mockAtvsldChecklist];
+    else if (categoryId === "phong-chay-chua-chay") defaultData = [...mockPcccChecklist];
+    else if (categoryId === "phong-chong-thien-tai") defaultData = [...mockPcttChecklist];
+    else if (categoryId === "an-toan-thong-tin") defaultData = [...mockAtttChecklist];
+    else if (categoryId === "bao-tri-cong-trinh") defaultData = [...mockBtctChecklist];
+    
+    setData(defaultData);
 
-    if (saved) {
+    // Fetch dữ liệu từ Database
+    const loadFromDB = async () => {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed.length === 0) {
-          if (categoryId === "quan-ly-ky-thuat") setData(mockTechChecklist);
-          else if (categoryId === "quan-ly-an-toan-sms") setData(mockSmsChecklist);
-          else if (categoryId === "an-toan-ve-sinh") setData(mockAtvsldChecklist);
-          else if (categoryId === "phong-chay-chua-chay") setData(mockPcccChecklist);
-          else if (categoryId === "phong-chong-thien-tai") setData(mockPcttChecklist);
-          else if (categoryId === "an-toan-thong-tin") setData(mockAtttChecklist);
-          else if (categoryId === "bao-tri-cong-trinh") setData(mockBtctChecklist);
-          else setData([]);
-        } else {
-          setData(parsed);
+        const res = await fetch(`/api/inspections/load?categoryId=${categoryId}&unitParam=${unitParam || ''}`);
+        const result = await res.json();
+        
+        if (result.data && result.data.length > 0) {
+          setData(prevData => {
+            const newData = JSON.parse(JSON.stringify(prevData)); // Deep clone
+            result.data.forEach((dbItem: any) => {
+              for (const group of newData) {
+                const itemIndex = group.items.findIndex((i: any) => i.id === dbItem.checklistItemId);
+                if (itemIndex !== -1) {
+                  const item = group.items[itemIndex];
+                  if (dbItem.status) item.status = dbItem.status;
+                  if (dbItem.note) item.note = dbItem.note;
+                  if (dbItem.reference) item.reference = dbItem.reference;
+                  if (dbItem.evidencePdf) item.evidencePdfs = dbItem.evidencePdf;
+                  if (dbItem.evidenceImg) item.evidenceImgs = dbItem.evidenceImg;
+                  break;
+                }
+              }
+            });
+            return newData;
+          });
         }
-      } catch (e) {
-        console.error("Failed to parse saved data", e);
+      } catch (err) {
+        console.error("Lỗi khi load dữ liệu từ DB", err);
       }
-    } else if (categoryId === "quan-ly-ky-thuat") {
-      setData(mockTechChecklist);
-    } else if (categoryId === "quan-ly-an-toan-sms") {
-      setData(mockSmsChecklist);
-    } else if (categoryId === "an-toan-ve-sinh") {
-      setData(mockAtvsldChecklist);
-    } else if (categoryId === "phong-chay-chua-chay") {
-      setData(mockPcccChecklist);
-    } else if (categoryId === "phong-chong-thien-tai") {
-      setData(mockPcttChecklist);
-    } else if (categoryId === "an-toan-thong-tin") {
-      setData(mockAtttChecklist);
-    } else if (categoryId === "bao-tri-cong-trinh") {
-      setData(mockBtctChecklist);
-    } else {
-      setData([]);
-    }
-  }, [categoryId, storageKey]);
+    };
+    
+    loadFromDB();
+  }, [categoryId, unitParam]);
 
   const handleStatusChange = (groupId: string, itemId: string, refIdx: number, status: string) => {
     setData((prevData) => {
@@ -290,18 +293,32 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    // Lưu vào localStorage để không mất khi F5
-    localStorage.setItem(storageKey, JSON.stringify(data));
-    if (categoryId === "quan-ly-ky-thuat") {
-      localStorage.setItem("techChecklistData", JSON.stringify(data));
-    }
-    setTimeout(() => {
-      setIsSaving(false);
+    
+    try {
+      const res = await fetch('/api/inspections/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          categoryId,
+          unitParam,
+          data
+        })
+      });
+
+      if (!res.ok) throw new Error("API Save failed");
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+    } catch (err) {
+      console.error("Lỗi lưu DB", err);
+      alert("Đã xảy ra lỗi khi lưu vào cơ sở dữ liệu!");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

@@ -65,6 +65,7 @@ async function main() {
     for (const group of groups) {
       const createdGroup = await prisma.checklistGroup.create({
         data: {
+          id: group.id,
           categoryId,
           order: group.order.toString(),
           title: group.title,
@@ -74,6 +75,7 @@ async function main() {
       for (const item of group.items) {
         await prisma.checklistItem.create({
           data: {
+            id: item.id,
             groupId: createdGroup.id,
             orderIndex: item.orderIndex.toString(),
             title: item.title,

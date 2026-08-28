@@ -77,11 +77,11 @@ model InspectionResult {
   id            String   @id @default(cuid())
   inspectionId  String
   checklistItemId String
-  status        String?
+  status        Json?
   reference     String?
   note          String?
-  evidencePdf   String?
-  evidenceImg   String?
+  evidencePdf   Json?
+  evidenceImg   Json?
   
   inspection    Inspection    @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
