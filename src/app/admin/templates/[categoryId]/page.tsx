@@ -35,11 +35,13 @@ export default function TemplateBuilderPage() {
           initialData = result.data;
         } else {
           // Fallback to mock data if DB is empty
-          if (categoryId === "quan-ly-ky-thuat") {
-            initialData = mockTechChecklist;
-          } else if (categoryId === "quan-ly-an-toan-sms") {
-            initialData = mockSmsChecklist;
-          }
+          if (categoryId === "quan-ly-ky-thuat") initialData = [...mockTechChecklist];
+          else if (categoryId === "quan-ly-an-toan-sms") initialData = [...mockSmsChecklist];
+          else if (categoryId === "an-toan-ve-sinh") initialData = [...mockAtvsldChecklist];
+          else if (categoryId === "phong-chay-chua-chay") initialData = [...mockPcccChecklist];
+          else if (categoryId === "phong-chong-thien-tai") initialData = [...mockPcttChecklist];
+          else if (categoryId === "an-toan-thong-tin") initialData = [...mockAtttChecklist];
+          else if (categoryId === "bao-tri-cong-trinh") initialData = [...mockBtctChecklist];
         }
         
         // Auto-migrate old string formats to new newline-separated format
