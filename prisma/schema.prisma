@@ -55,6 +55,7 @@ model ChecklistItem {
   orderIndex    String   // e.g. "1.1.1", "a", "-"
   title         String
   statusOptions String?  // comma-separated, e.g. "Tốt,Bình thường,Cần cải thiện" or "Có,Không"
+  reference     String?  // Reference docs template
   
   group         ChecklistGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   results       InspectionResult[]

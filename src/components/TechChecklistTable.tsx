@@ -40,50 +40,56 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const storageKey = `checklistData-${categoryId}`;
 
   useEffect(() => {
-    // Luôn load data tĩnh trước
-    let defaultData: TechChecklistGroup[] = [];
-    if (categoryId === "quan-ly-ky-thuat") defaultData = [...mockTechChecklist];
-    else if (categoryId === "quan-ly-an-toan-sms") defaultData = [...mockSmsChecklist];
-    else if (categoryId === "an-toan-ve-sinh") defaultData = [...mockAtvsldChecklist];
-    else if (categoryId === "phong-chay-chua-chay") defaultData = [...mockPcccChecklist];
-    else if (categoryId === "phong-chong-thien-tai") defaultData = [...mockPcttChecklist];
-    else if (categoryId === "an-toan-thong-tin") defaultData = [...mockAtttChecklist];
-    else if (categoryId === "bao-tri-cong-trinh") defaultData = [...mockBtctChecklist];
-    
-    setData(defaultData);
-
-    // Fetch dữ liệu từ Database
-    const loadFromDB = async () => {
+    const fetchTemplateAndData = async () => {
       try {
-        const res = await fetch(`/api/inspections/load?categoryId=${categoryId}&unitParam=${unitParam || ''}`);
-        const result = await res.json();
+        // 1. Lấy cấu trúc form (Template) từ DB do Admin định nghĩa
+        const tplRes = await fetch(`/api/templates/load?categoryId=${categoryId}`);
+        const tplResult = await tplRes.json();
         
-        if (result.data && result.data.length > 0) {
-          setData(prevData => {
-            const newData = JSON.parse(JSON.stringify(prevData)); // Deep clone
-            result.data.forEach((dbItem: any) => {
-              for (const group of newData) {
-                const itemIndex = group.items.findIndex((i: any) => i.id === dbItem.checklistItemId);
-                if (itemIndex !== -1) {
-                  const item = group.items[itemIndex];
-                  if (dbItem.status) item.status = dbItem.status;
-                  if (dbItem.note) item.note = dbItem.note;
-                  if (dbItem.reference) item.reference = dbItem.reference;
-                  if (dbItem.evidencePdf) item.evidencePdfs = dbItem.evidencePdf;
-                  if (dbItem.evidenceImg) item.evidenceImgs = dbItem.evidenceImg;
-                  break;
-                }
+        let initialData: TechChecklistGroup[] = [];
+        if (tplResult.data && tplResult.data.length > 0) {
+          initialData = tplResult.data;
+        } else {
+          // Fallback về file cứng nếu DB chưa có template
+          if (categoryId === "quan-ly-ky-thuat") initialData = [...mockTechChecklist];
+          else if (categoryId === "quan-ly-an-toan-sms") initialData = [...mockSmsChecklist];
+          else if (categoryId === "an-toan-ve-sinh") initialData = [...mockAtvsldChecklist];
+          else if (categoryId === "phong-chay-chua-chay") initialData = [...mockPcccChecklist];
+          else if (categoryId === "phong-chong-thien-tai") initialData = [...mockPcttChecklist];
+          else if (categoryId === "an-toan-thong-tin") initialData = [...mockAtttChecklist];
+          else if (categoryId === "bao-tri-cong-trinh") initialData = [...mockBtctChecklist];
+        }
+
+        // 2. Lấy dữ liệu đánh giá thực tế (Có/Không, Ảnh...) từ DB
+        const dataRes = await fetch(`/api/inspections/load?categoryId=${categoryId}&unitParam=${unitParam || ''}`);
+        const dataResult = await dataRes.json();
+
+        if (dataResult.data && dataResult.data.length > 0) {
+          const newData = JSON.parse(JSON.stringify(initialData)); // Deep clone
+          dataResult.data.forEach((dbItem: any) => {
+            for (const group of newData) {
+              const itemIndex = group.items.findIndex((i: any) => i.id === dbItem.checklistItemId);
+              if (itemIndex !== -1) {
+                const item = group.items[itemIndex];
+                if (dbItem.status) item.status = dbItem.status;
+                if (dbItem.note) item.note = dbItem.note;
+                if (dbItem.reference) item.reference = dbItem.reference;
+                if (dbItem.evidencePdf) item.evidencePdfs = dbItem.evidencePdf;
+                if (dbItem.evidenceImg) item.evidenceImgs = dbItem.evidenceImg;
+                break;
               }
-            });
-            return newData;
+            }
           });
+          setData(newData);
+        } else {
+          setData(initialData);
         }
       } catch (err) {
-        console.error("Lỗi khi load dữ liệu từ DB", err);
+        console.error("Lỗi khi load dữ liệu", err);
       }
     };
     
-    loadFromDB();
+    fetchTemplateAndData();
   }, [categoryId, unitParam]);
 
   const handleStatusChange = (groupId: string, itemId: string, refIdx: number, status: string) => {

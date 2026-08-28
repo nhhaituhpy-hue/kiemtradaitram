@@ -25,72 +25,78 @@ export default function TemplateBuilderPage() {
     const found = allCats.find((c: any) => c.id === categoryId);
     if (found) setCatTitle(found.title);
 
-    let savedData = localStorage.getItem(storageKey);
-    // fallback for the first demo compatibility
-    if (!savedData && categoryId === "quan-ly-ky-thuat") {
-      savedData = localStorage.getItem("techChecklistData");
-    }
-
-    let initialData: TechChecklistGroup[] = [];
-    if (categoryId === "quan-ly-ky-thuat") {
-      initialData = mockTechChecklist;
-    } else if (categoryId === "quan-ly-an-toan-sms") {
-      initialData = mockSmsChecklist;
-    }
-    
-    if (savedData) {
+    const loadTemplate = async () => {
       try {
-        initialData = JSON.parse(savedData);
-      } catch (e) {
-        console.error("Failed to parse saved data", e);
-      }
-    }
-    
-    // Safety check: if somehow savedData was "[]" for the main template, restore it
-    if (initialData.length === 0) {
-      if (categoryId === "quan-ly-ky-thuat") initialData = mockTechChecklist;
-      else if (categoryId === "quan-ly-an-toan-sms") initialData = mockSmsChecklist;
-    }
-    
-    // Auto-migrate old string formats to new newline-separated format
-    const migratedData = initialData.map(group => ({
-      ...group,
-      items: group.items.map(item => {
-        let opts = item.statusOptions || "";
-        if (opts.toLowerCase() === "có không") opts = "Có\nKhông";
-        else if (opts.toLowerCase() === "đạt không đạt" || opts.toLowerCase() === "đạt k.đạt") opts = "Đạt\nKhông đạt";
-        else if (opts.toLowerCase() === "tốt chưa tốt") opts = "Tốt\nChưa tốt";
-        else if (opts.toLowerCase() === "đáp ứng chưa đáp ứng") opts = "Đáp ứng\nChưa đáp ứng";
-        else if (opts.toLowerCase() === "đáp ứng thừa") opts = "Đáp ứng\nThừa\nThiếu";
-        else if (opts.toLowerCase() === "đủ k.đủ") opts = "Đủ\nKhông đủ";
-        else if (opts.toLowerCase() === "hợp lý chưa hợp lý") opts = "Hợp lý\nChưa hợp lý";
+        const res = await fetch(`/api/templates/load?categoryId=${categoryId}`);
+        const result = await res.json();
         
-        return { ...item, statusOptions: opts };
-      })
-    }));
+        let initialData: TechChecklistGroup[] = [];
+        if (result.data && result.data.length > 0) {
+          initialData = result.data;
+        } else {
+          // Fallback to mock data if DB is empty
+          if (categoryId === "quan-ly-ky-thuat") {
+            initialData = mockTechChecklist;
+          } else if (categoryId === "quan-ly-an-toan-sms") {
+            initialData = mockSmsChecklist;
+          }
+        }
+        
+        // Auto-migrate old string formats to new newline-separated format
+        const migratedData = initialData.map(group => ({
+          ...group,
+          items: group.items.map(item => {
+            let opts = item.statusOptions || "";
+            if (opts.toLowerCase() === "có không") opts = "Có\nKhông";
+            else if (opts.toLowerCase() === "đạt không đạt" || opts.toLowerCase() === "đạt k.đạt") opts = "Đạt\nKhông đạt";
+            else if (opts.toLowerCase() === "tốt chưa tốt") opts = "Tốt\nChưa tốt";
+            else if (opts.toLowerCase() === "đáp ứng chưa đáp ứng") opts = "Đáp ứng\nChưa đáp ứng";
+            else if (opts.toLowerCase() === "đáp ứng thừa") opts = "Đáp ứng\nThừa\nThiếu";
+            else if (opts.toLowerCase() === "đủ k.đủ") opts = "Đủ\nKhông đủ";
+            else if (opts.toLowerCase() === "hợp lý chưa hợp lý") opts = "Hợp lý\nChưa hợp lý";
+            
+            return { ...item, statusOptions: opts };
+          })
+        }));
 
-    setGroups(migratedData);
-    
-    if (savedData) {
-      localStorage.setItem(storageKey, JSON.stringify(migratedData));
-      // update old fallback if needed
-      if (categoryId === "quan-ly-ky-thuat") {
-        localStorage.setItem("techChecklistData", JSON.stringify(migratedData));
+        setGroups(migratedData);
+      } catch (err) {
+        console.error("Lỗi khi load template từ DB", err);
       }
-    }
+    };
+
+    loadTemplate();
   }, [categoryId, storageKey]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    localStorage.setItem(storageKey, JSON.stringify(groups));
-    if (categoryId === "quan-ly-ky-thuat") {
-      localStorage.setItem("techChecklistData", JSON.stringify(groups));
-    }
-    setTimeout(() => {
-      setIsSaving(false);
+    
+    try {
+      const res = await fetch('/api/templates/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId,
+          groups
+        })
+      });
+
+      if (!res.ok) throw new Error("Lỗi khi lưu DB");
+
+      // Cập nhật localStorage để tương thích ngược cho một số trang chưa kịp đổi API
+      localStorage.setItem(storageKey, JSON.stringify(groups));
+      if (categoryId === "quan-ly-ky-thuat") {
+        localStorage.setItem("techChecklistData", JSON.stringify(groups));
+      }
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
+    } catch (err) {
+      console.error("Lỗi lưu mẫu DB:", err);
+      alert("Đã xảy ra lỗi khi lưu biểu mẫu vào cơ sở dữ liệu!");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const addGroup = () => {

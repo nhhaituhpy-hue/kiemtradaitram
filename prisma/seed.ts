@@ -80,6 +80,7 @@ async function main() {
             orderIndex: item.orderIndex.toString(),
             title: item.title,
             statusOptions: item.statusOptions || null,
+            reference: item.reference || null,
           }
         });
       }
