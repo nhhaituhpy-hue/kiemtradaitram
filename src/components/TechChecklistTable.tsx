@@ -22,6 +22,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const [activeRefIdx, setActiveRefIdx] = useState<number | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingRef, setEditingRef] = useState<{ id: string, idx: number, value: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const params = useParams();
   const router = useRouter();
@@ -140,44 +141,79 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     }, 200);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeItem || !activeGroupId || !modalType || activeRefIdx === null) return;
     
-    const objectUrl = URL.createObjectURL(file);
-    const now = new Date();
-    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
-    
-    setData((prevData) => {
-      const newData = [...prevData];
-      const groupIndex = newData.findIndex(g => g.id === activeGroupId);
-      if (groupIndex !== -1) {
-        const itemIndex = newData[groupIndex].items.findIndex(i => i.id === activeItem.id);
-        if (itemIndex !== -1) {
-          const field = modalType === "pdf" ? "evidencePdfs" : "evidenceImgs";
-          const currentData = newData[groupIndex].items[itemIndex][field] || {};
-          newData[groupIndex].items[itemIndex][field] = {
-            ...currentData,
-            [activeRefIdx]: { url: objectUrl, uploadedAt: timestamp }
-          };
-          setActiveItem(newData[groupIndex].items[itemIndex]);
-        }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('categoryId', categoryId);
+      formData.append('itemId', activeItem.id);
+      formData.append('fileType', modalType);
+
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const result = await res.json();
+
+      if (!result.success) {
+        alert('Upload thất bại: ' + (result.error || 'Unknown error'));
+        return;
       }
-      return newData;
-    });
+
+      const now = new Date();
+      const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+
+      setData((prevData) => {
+        const newData = [...prevData];
+        const groupIndex = newData.findIndex(g => g.id === activeGroupId);
+        if (groupIndex !== -1) {
+          const itemIndex = newData[groupIndex].items.findIndex(i => i.id === activeItem.id);
+          if (itemIndex !== -1) {
+            const field = modalType === "pdf" ? "evidencePdfs" : "evidenceImgs";
+            const currentData = newData[groupIndex].items[itemIndex][field] || {};
+            newData[groupIndex].items[itemIndex][field] = {
+              ...currentData,
+              [activeRefIdx]: { url: result.url, key: result.key, uploadedAt: timestamp }
+            };
+            setActiveItem(newData[groupIndex].items[itemIndex]);
+          }
+        }
+        return newData;
+      });
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Lỗi kết nối khi tải file lên.');
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleRemoveFile = (e: React.MouseEvent) => {
+  const handleRemoveFile = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeItem || !activeGroupId || !modalType || activeRefIdx === null) return;
     
+    // Try to delete from MinIO if there's a storage key
+    const field = modalType === "pdf" ? "evidencePdfs" : "evidenceImgs";
+    const fileData = activeItem[field]?.[activeRefIdx];
+    if (fileData?.key) {
+      try {
+        await fetch('/api/delete-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: fileData.key }),
+        });
+      } catch (err) {
+        console.error('Delete from storage failed:', err);
+      }
+    }
+
     setData((prevData) => {
       const newData = [...prevData];
       const groupIndex = newData.findIndex(g => g.id === activeGroupId);
       if (groupIndex !== -1) {
         const itemIndex = newData[groupIndex].items.findIndex(i => i.id === activeItem.id);
         if (itemIndex !== -1) {
-          const field = modalType === "pdf" ? "evidencePdfs" : "evidenceImgs";
           const currentData = { ...(newData[groupIndex].items[itemIndex][field] || {}) };
           delete currentData[activeRefIdx];
           newData[groupIndex].items[itemIndex][field] = currentData;
@@ -546,22 +582,35 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                     </div>
                   ) : (
                     <div 
-                      onClick={() => fileRef.current?.click()}
-                      className="border-2 border-dashed border-[#D6D4CB] rounded-xl p-8 flex flex-col items-center justify-center text-center bg-[#F9F8F6] hover:bg-[#F4F3EF] transition-colors cursor-pointer group"
+                      onClick={() => !uploading && fileRef.current?.click()}
+                      className={`border-2 border-dashed border-[#D6D4CB] rounded-xl p-8 flex flex-col items-center justify-center text-center bg-[#F9F8F6] transition-colors ${uploading ? 'opacity-60 cursor-wait' : 'hover:bg-[#F4F3EF] cursor-pointer group'}`}
                     >
-                      <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        {modalType === "pdf" ? (
-                          <FileText className="text-red-500" size={24} />
-                        ) : (
-                          <ImageIcon className="text-blue-500" size={24} />
-                        )}
-                      </div>
-                      <p className="text-sm font-medium text-zinc-700">
-                        Nhấn để tải lên {modalType === "pdf" ? "file PDF" : "hình ảnh"}
-                      </p>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        (Hệ thống đã sẵn sàng kết nối API lưu trữ)
-                      </p>
+                      {uploading ? (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 animate-spin">
+                            <RefreshCw className="text-zinc-500" size={24} />
+                          </div>
+                          <p className="text-sm font-medium text-zinc-700">
+                            Đang tải lên MinIO Storage...
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                            {modalType === "pdf" ? (
+                              <FileText className="text-red-500" size={24} />
+                            ) : (
+                              <ImageIcon className="text-blue-500" size={24} />
+                            )}
+                          </div>
+                          <p className="text-sm font-medium text-zinc-700">
+                            Nhấn để tải lên {modalType === "pdf" ? "file PDF" : "hình ảnh"}
+                          </p>
+                          <p className="text-xs text-zinc-500 mt-1">
+                            File sẽ được lưu trữ trên hệ thống MinIO Storage
+                          </p>
+                        </>
+                      )}
                     </div>
                   );
                 })()}
