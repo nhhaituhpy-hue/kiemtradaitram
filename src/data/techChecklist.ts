@@ -10,8 +10,8 @@ export type TechChecklistItem = {
   evidencePdf?: string | null;
   evidenceImg?: string | null;
   // Plural forms used by multi-reference evidence upload
-  evidencePdfs?: Record<number, { url: string; uploadedAt: string }>;
-  evidenceImgs?: Record<number, { url: string; uploadedAt: string }>;
+  evidencePdfs?: Record<number, { url: string; uploadedAt: string; key?: string }>;
+  evidenceImgs?: Record<number, { url: string; uploadedAt: string; key?: string }>;
 };
 
 export type TechChecklistGroup = {
