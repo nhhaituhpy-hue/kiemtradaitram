@@ -229,6 +229,14 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       ? item.statusOptions.split('\n').map((o: string) => o.trim()).filter(Boolean) 
       : ["Có", "Không"];
 
+    // Chuẩn hóa dữ liệu lỗi từ parse file docx
+    const rawStatus = (item.statusOptions || "").toLowerCase().replace(/\s+/g, '');
+    if (rawStatus.includes("cókhông") && rawStatus.includes("đủk.đủ")) {
+      opts = ["Có", "Không", "Đủ", "Không đủ"];
+    } else if (rawStatus.includes("cókhông")) {
+      opts = ["Có", "Không"];
+    }
+
     if (!item.statusOptions && categoryId === "an-toan-thong-tin") {
       opts = ["Đạt", "Không đạt"];
     }
