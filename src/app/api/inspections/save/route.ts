@@ -18,11 +18,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      user = await prisma.user.findFirst();
-    }
-    
-    if (!user) {
-       return NextResponse.json({ error: 'Không tìm thấy user nào trong hệ thống' }, { status: 404 });
+      // Auto-tạo user nếu DB trống (chưa seed)
+      user = await prisma.user.create({
+        data: {
+          username: `user_${unitCode.toLowerCase()}`,
+          password: 'hashed_password_mock',
+          unitCode: unitCode,
+          unitName: `Trạm ${unitCode}`,
+          role: 'USER'
+        }
+      });
     }
 
     // Đảm bảo category tồn tại để tránh lỗi Foreign Key
@@ -41,6 +46,17 @@ export async function POST(request: NextRequest) {
       inspection = await prisma.inspection.create({
         data: { userId: user.id, categoryId, status: "DRAFT" }
       });
+    }
+
+    // Kiểm tra xem Admin đã khởi tạo biểu mẫu (Template) trong DB chưa
+    if (data.length > 0 && data[0].items && data[0].items.length > 0) {
+       const firstItemId = data[0].items[0].id;
+       const itemExists = await prisma.checklistItem.findUnique({ where: { id: firstItemId } });
+       if (!itemExists) {
+          return NextResponse.json({ 
+             error: "Biểu mẫu chưa được lưu trên hệ thống. Vui lòng nhờ Admin vào 'Quản trị hệ thống' để 'Lưu cấu hình' biểu mẫu này trước khi tiến hành điền báo cáo!" 
+          }, { status: 400 });
+       }
     }
 
     // Cập nhật từng dòng InspectionResult

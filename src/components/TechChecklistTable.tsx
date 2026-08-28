@@ -315,13 +315,16 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
         })
       });
 
-      if (!res.ok) throw new Error("API Save failed");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Lỗi lưu kết quả");
+      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lỗi lưu DB", err);
-      alert("Đã xảy ra lỗi khi lưu vào cơ sở dữ liệu!");
+      alert(err.message || "Đã xảy ra lỗi khi lưu vào cơ sở dữ liệu!");
     } finally {
       setIsSaving(false);
     }
