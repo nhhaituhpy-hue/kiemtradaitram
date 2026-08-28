@@ -11,35 +11,64 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Thiếu categoryId hoặc dữ liệu groups' }, { status: 400 });
     }
 
-    // 1. Xóa toàn bộ groups cũ (Cascade sẽ xóa luôn items)
-    await prisma.checklistGroup.deleteMany({
-      where: { categoryId }
-    });
+    await prisma.$transaction(async (tx) => {
+      const payloadGroupIds = groups.map((g: any) => g.id);
 
-    // 2. Tạo lại toàn bộ groups và items
-    for (const group of groups) {
-      const createdGroup = await prisma.checklistGroup.create({
-        data: {
-          id: group.id,
+      // 1. Xóa các Group không còn trong danh sách mới
+      await tx.checklistGroup.deleteMany({
+        where: {
           categoryId,
-          order: group.order.toString(),
-          title: group.title,
+          id: { notIn: payloadGroupIds }
         }
       });
 
-      for (const item of group.items) {
-        await prisma.checklistItem.create({
-          data: {
-            id: item.id,
-            groupId: createdGroup.id,
-            orderIndex: item.orderIndex.toString(),
-            title: item.title,
-            statusOptions: item.statusOptions || null,
-            reference: item.reference || null,
+      // 2. Lặp qua các group để Update hoặc Create
+      for (const group of groups) {
+        await tx.checklistGroup.upsert({
+          where: { id: group.id },
+          update: {
+            order: group.order.toString(),
+            title: group.title,
+          },
+          create: {
+            id: group.id,
+            categoryId,
+            order: group.order.toString(),
+            title: group.title,
           }
         });
+
+        // Xóa các Item không còn trong danh sách của group này
+        const payloadItemIds = group.items.map((i: any) => i.id);
+        await tx.checklistItem.deleteMany({
+          where: {
+            groupId: group.id,
+            id: { notIn: payloadItemIds }
+          }
+        });
+
+        // Upsert từng Item
+        for (const item of group.items) {
+          await tx.checklistItem.upsert({
+            where: { id: item.id },
+            update: {
+              orderIndex: item.orderIndex.toString(),
+              title: item.title,
+              statusOptions: item.statusOptions || null,
+              reference: item.reference || null,
+            },
+            create: {
+              id: item.id,
+              groupId: group.id,
+              orderIndex: item.orderIndex.toString(),
+              title: item.title,
+              statusOptions: item.statusOptions || null,
+              reference: item.reference || null,
+            }
+          });
+        }
       }
-    }
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
