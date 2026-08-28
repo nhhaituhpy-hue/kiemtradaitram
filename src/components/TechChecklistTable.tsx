@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { FileText, Image as ImageIcon, X, Save, Check, Pen, Trash2, RefreshCw, Maximize, ArrowLeft } from "lucide-react";
+import { FileText, Image as ImageIcon, X, Save, Check, Pen, Trash2, RefreshCw, Maximize, ArrowLeft, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { TechChecklistGroup, mockTechChecklist } from "@/data/techChecklist";
 import { mockSmsChecklist } from "@/data/smsChecklist";
 import { mockAtvsldChecklist } from "@/data/atvsldChecklist";
@@ -23,6 +23,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingRef, setEditingRef] = useState<{ id: string, idx: number, value: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [activeFileIndex, setActiveFileIndex] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const params = useParams();
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     setModalType(type);
     setActiveRef(refText || null);
     setActiveRefIdx(refIdx);
+    setActiveFileIndex(0);
     setModalOpen(true);
   };
 
@@ -151,6 +153,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       setModalType(null);
       setActiveRef(null);
       setActiveRefIdx(null);
+      setActiveFileIndex(0);
     }, 200);
   };
 
@@ -185,11 +188,20 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
           if (itemIndex !== -1) {
             const field = modalType === "pdf" ? "evidencePdfs" : "evidenceImgs";
             const currentData = newData[groupIndex].items[itemIndex][field] || {};
+            
+            let existingFiles = currentData[activeRefIdx] || [];
+            if (!Array.isArray(existingFiles)) {
+                existingFiles = [existingFiles];
+            }
+            const newFile = { url: result.url, key: result.key, uploadedAt: timestamp };
+            
             newData[groupIndex].items[itemIndex][field] = {
               ...currentData,
-              [activeRefIdx]: { url: result.url, key: result.key, uploadedAt: timestamp }
+              [activeRefIdx]: [...existingFiles, newFile]
             };
+            
             setActiveItem(newData[groupIndex].items[itemIndex]);
+            setActiveFileIndex(existingFiles.length); // Chuyển sang xem file vừa upload
           }
         }
         return newData;
@@ -206,9 +218,15 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     e.stopPropagation();
     if (!activeItem || !activeGroupId || !modalType || activeRefIdx === null) return;
     
-    // Try to delete from MinIO if there's a storage key
     const field = modalType === "pdf" ? "evidencePdfs" : "evidenceImgs";
-    const fileData = activeItem[field]?.[activeRefIdx];
+    let existingFiles = activeItem[field]?.[activeRefIdx] || [];
+    if (!Array.isArray(existingFiles)) {
+        existingFiles = [existingFiles];
+    }
+    
+    if (existingFiles.length === 0) return;
+    const fileData = existingFiles[activeFileIndex];
+
     if (fileData?.key) {
       try {
         await fetch('/api/delete-file', {
@@ -228,9 +246,22 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
         const itemIndex = newData[groupIndex].items.findIndex(i => i.id === activeItem.id);
         if (itemIndex !== -1) {
           const currentData = { ...(newData[groupIndex].items[itemIndex][field] || {}) };
-          delete currentData[activeRefIdx];
+          
+          const newFiles = [...existingFiles];
+          newFiles.splice(activeFileIndex, 1);
+          
+          if (newFiles.length === 0) {
+             delete currentData[activeRefIdx];
+          } else {
+             currentData[activeRefIdx] = newFiles;
+          }
+          
           newData[groupIndex].items[itemIndex][field] = currentData;
           setActiveItem(newData[groupIndex].items[itemIndex]);
+          
+          if (activeFileIndex >= newFiles.length && newFiles.length > 0) {
+              setActiveFileIndex(newFiles.length - 1);
+          }
         }
       }
       return newData;
@@ -581,14 +612,43 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                 />
 
                 {(() => {
-                  const activePdfData = activeItem.evidencePdfs?.[activeRefIdx as number] || (activeRefIdx === 0 && typeof activeItem.evidencePdf === 'string' ? activeItem.evidencePdf : null);
-                  const activeImgData = activeItem.evidenceImgs?.[activeRefIdx as number] || (activeRefIdx === 0 && typeof activeItem.evidenceImg === 'string' ? activeItem.evidenceImg : null);
-                  const currentData = modalType === "pdf" ? activePdfData : activeImgData;
-                  const currentUrl = extractUrl(currentData);
-                  const uploadedAt = extractTimestamp(currentData);
+                  const rawPdfData = activeItem.evidencePdfs?.[activeRefIdx as number] || (activeRefIdx === 0 && typeof activeItem.evidencePdf === 'string' ? activeItem.evidencePdf : null);
+                  const rawImgData = activeItem.evidenceImgs?.[activeRefIdx as number] || (activeRefIdx === 0 && typeof activeItem.evidenceImg === 'string' ? activeItem.evidenceImg : null);
+                  const rawData = modalType === "pdf" ? rawPdfData : rawImgData;
+                  
+                  let fileList = rawData || [];
+                  if (rawData && !Array.isArray(rawData)) {
+                      fileList = typeof rawData === 'string' ? [{url: rawData}] : [rawData];
+                  }
 
-                  return currentUrl ? (
+                  const hasFiles = fileList.length > 0;
+                  const currentFile = hasFiles ? fileList[activeFileIndex] : null;
+                  const currentUrl = extractUrl(currentFile);
+                  const uploadedAt = extractTimestamp(currentFile);
+
+                  return hasFiles ? (
                     <div className="flex flex-col h-full w-full animate-in fade-in zoom-in-95 duration-200">
+                      
+                      {fileList.length > 1 && (
+                        <div className="flex items-center justify-between mb-3 bg-[#F4F3EF] p-2 rounded-lg border border-[#E0DED5]">
+                          <button
+                             onClick={() => setActiveFileIndex(prev => Math.max(0, prev - 1))}
+                             disabled={activeFileIndex === 0}
+                             className="p-1.5 rounded bg-white shadow-sm border border-[#E0DED5] disabled:opacity-50 text-zinc-600 hover:text-zinc-900 transition-colors"
+                          >
+                             <ChevronLeft size={18} />
+                          </button>
+                          <span className="text-sm font-semibold text-zinc-700">Tài liệu {activeFileIndex + 1} / {fileList.length}</span>
+                          <button
+                             onClick={() => setActiveFileIndex(prev => Math.min(fileList.length - 1, prev + 1))}
+                             disabled={activeFileIndex === fileList.length - 1}
+                             className="p-1.5 rounded bg-white shadow-sm border border-[#E0DED5] disabled:opacity-50 text-zinc-600 hover:text-zinc-900 transition-colors"
+                          >
+                             <ChevronRight size={18} />
+                          </button>
+                        </div>
+                      )}
+
                       <div className="relative w-full h-[300px] bg-zinc-100 rounded-lg overflow-hidden border border-[#E0DED5] mb-4 flex flex-col group">
                         {modalType === "pdf" ? (
                           <iframe src={currentUrl} className="w-full h-full" title="PDF Preview" />
@@ -609,20 +669,22 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                           </div>
                         )}
                       </div>
+                      
                       <div className="flex justify-center gap-3">
                         <button 
-                          onClick={() => fileRef.current?.click()}
-                          className="flex items-center gap-2 px-4 py-2 bg-[#F4F3EF] hover:bg-[#E0DED5] text-zinc-700 rounded-lg font-medium text-sm transition-colors border border-[#D6D4CB]"
+                          onClick={() => !uploading && fileRef.current?.click()}
+                          disabled={uploading}
+                          className="flex items-center gap-2 px-4 py-2 bg-[#F4F3EF] hover:bg-[#E0DED5] text-zinc-700 rounded-lg font-medium text-sm transition-colors border border-[#D6D4CB] disabled:opacity-60"
                         >
-                          <RefreshCw size={16} />
-                          Thay đổi
+                          {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
+                          Tải thêm
                         </button>
                         <button 
                           onClick={handleRemoveFile}
                           className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium text-sm transition-colors border border-red-200"
                         >
                           <Trash2 size={16} />
-                          Xóa tài liệu
+                          Xóa tài liệu này
                         </button>
                       </div>
                     </div>
