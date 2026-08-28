@@ -4,6 +4,11 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, Save, GripVertical, FileText, CheckCircle, X, Eye } from "lucide-react";
 import { TechChecklistGroup, TechChecklistItem, mockTechChecklist } from "@/data/techChecklist";
 import { mockSmsChecklist } from "@/data/smsChecklist";
+import { mockAtvsldChecklist } from "@/data/atvsldChecklist";
+import { mockPcccChecklist } from "@/data/pcccChecklist";
+import { mockPcttChecklist } from "@/data/pcttChecklist";
+import { mockAtttChecklist } from "@/data/atttChecklist";
+import { mockBtctChecklist } from "@/data/btctChecklist";
 import { defaultCategories } from "@/data/categories";
 import { useParams, useRouter } from "next/navigation";
 
