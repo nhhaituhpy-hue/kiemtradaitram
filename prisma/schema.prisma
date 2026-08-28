@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // Should be hashed in real app
+  unitCode  String   // e.g. "TUH"
+  unitName  String   // e.g. "Đài DVOR/DME Tuy Hòa"
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// existing Checklist model for generic checklists
+model Checklist {
+  id          String   @id @default(cuid())
+  unit        String
+  category    String
+  title       String
+  status      String
+  updatedAt   DateTime @default(now())
+  evidenceUrl String?
+}
+
+// Hierarchical models for Quản lý kỹ thuật
+model TechChecklistGroup {
+  id    String              @id @default(cuid())
+  order Int
+  title String
+  items TechChecklistItem[]
+}
+
+model TechChecklistItem {
+  id            String             @id @default(cuid())
+  groupId       String
+  orderIndex    String
+  title         String
+  statusOptions String             // e.g., "có, không"
+  status        String?            // User's selected status
+  reference     String?
+  note          String?
+  evidencePdf   String?
+  evidenceImg   String?
+
+  group         TechChecklistGroup @relation(fields: [groupId], references: [id])
+}
