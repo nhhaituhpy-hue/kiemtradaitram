@@ -163,7 +163,7 @@ export default function TemplateBuilderPage() {
           ...g,
           items: g.items.map(i => {
             if (i.id === itemId) {
-              const currentRefs = i.reference ? i.reference.split('\n').filter(Boolean) : [];
+              const currentRefs = i.reference ? i.reference.split('\n') : [];
               return { ...i, reference: [...currentRefs, "- Tài liệu mới"].join('\n') };
             }
             return i;
@@ -181,7 +181,7 @@ export default function TemplateBuilderPage() {
           ...g,
           items: g.items.map(i => {
             if (i.id === itemId) {
-              const currentRefs = i.reference ? i.reference.split('\n').filter(Boolean) : [];
+              const currentRefs = i.reference ? i.reference.split('\n') : [];
               currentRefs[index] = value;
               return { ...i, reference: currentRefs.join('\n') };
             }
@@ -200,7 +200,7 @@ export default function TemplateBuilderPage() {
           ...g,
           items: g.items.map(i => {
             if (i.id === itemId) {
-              const currentRefs = i.reference ? i.reference.split('\n').filter(Boolean) : [];
+              const currentRefs = i.reference ? i.reference.split('\n') : [];
               currentRefs.splice(index, 1);
               return { ...i, reference: currentRefs.join('\n') };
             }
@@ -219,7 +219,7 @@ export default function TemplateBuilderPage() {
           ...g,
           items: g.items.map(i => {
             if (i.id === itemId) {
-              const currentOpts = i.statusOptions ? i.statusOptions.split('\n').filter(Boolean) : [];
+              const currentOpts = i.statusOptions ? i.statusOptions.split('\n') : [];
               return { ...i, statusOptions: [...currentOpts, "Tùy chọn mới"].join('\n') };
             }
             return i;
@@ -237,7 +237,7 @@ export default function TemplateBuilderPage() {
           ...g,
           items: g.items.map(i => {
             if (i.id === itemId) {
-              const currentOpts = i.statusOptions ? i.statusOptions.split('\n').filter(Boolean) : [];
+              const currentOpts = i.statusOptions ? i.statusOptions.split('\n') : [];
               currentOpts[index] = value;
               return { ...i, statusOptions: currentOpts.join('\n') };
             }
@@ -256,7 +256,7 @@ export default function TemplateBuilderPage() {
           ...g,
           items: g.items.map(i => {
             if (i.id === itemId) {
-              const currentOpts = i.statusOptions ? i.statusOptions.split('\n').filter(Boolean) : [];
+              const currentOpts = i.statusOptions ? i.statusOptions.split('\n') : [];
               currentOpts.splice(index, 1);
               return { ...i, statusOptions: currentOpts.join('\n') };
             }
@@ -345,7 +345,7 @@ export default function TemplateBuilderPage() {
                   <div className="xl:w-1/4">
                     <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 block">Tùy chọn hiện trạng</label>
                     <div className="space-y-2">
-                      {(item.statusOptions ? item.statusOptions.split('\n').filter(Boolean) : []).map((opt, idx) => (
+                      {(item.statusOptions ? item.statusOptions.split('\n') : []).map((opt, idx) => (
                         <div key={idx} className="flex items-center gap-2">
                           <input 
                             value={opt}
@@ -373,7 +373,7 @@ export default function TemplateBuilderPage() {
                   <div className="flex-1">
                     <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 block">Tài liệu tham chiếu</label>
                     <div className="space-y-2">
-                      {(item.reference ? item.reference.split('\n').filter(Boolean) : []).map((ref, idx) => (
+                      {(item.reference ? item.reference.split('\n') : []).map((ref, idx) => (
                         <div key={idx} className="flex items-center gap-2">
                           <input 
                             value={ref}
