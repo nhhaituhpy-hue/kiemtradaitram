@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -16,44 +13,78 @@ datasource db {
 model User {
   id        String   @id @default(uuid())
   username  String   @unique
-  password  String   // Should be hashed in real app
+  password  String   // Hashed password
   unitCode  String   // e.g. "TUH"
   unitName  String   // e.g. "Đài DVOR/DME Tuy Hòa"
   role      String   @default("USER")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  inspections Inspection[]
 }
 
-// existing Checklist model for generic checklists
-model Checklist {
-  id          String   @id @default(cuid())
-  unit        String
-  category    String
+model Category {
+  id          String   @id // e.g. "quan-ly-ky-thuat"
   title       String
-  status      String
-  updatedAt   DateTime @default(now())
-  evidenceUrl String?
+  shortTitle  String?
+  subtitle    String?
+  description String?
+  iconName    String?
+  color       String?
+  hoverColor  String?
+  gradient    String?
+  bgImage     String?
+  
+  groups      ChecklistGroup[]
+  inspections Inspection[]
 }
 
-// Hierarchical models for Quản lý kỹ thuật
-model TechChecklistGroup {
-  id    String              @id @default(cuid())
-  order Int
-  title String
-  items TechChecklistItem[]
+model ChecklistGroup {
+  id         String   @id @default(cuid())
+  categoryId String
+  order      String   // Can be "1", "1.1", etc.
+  title      String
+  
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  items      ChecklistItem[]
 }
 
-model TechChecklistItem {
-  id            String             @id @default(cuid())
+model ChecklistItem {
+  id            String   @id @default(cuid())
   groupId       String
-  orderIndex    String
+  orderIndex    String   // e.g. "1.1.1", "a", "-"
   title         String
-  statusOptions String             // e.g., "có, không"
-  status        String?            // User's selected status
+  statusOptions String?  // comma-separated, e.g. "Tốt,Bình thường,Cần cải thiện" or "Có,Không"
+  
+  group         ChecklistGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  results       InspectionResult[]
+}
+
+model Inspection {
+  id          String   @id @default(cuid())
+  userId      String
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  status      String   @default("DRAFT") // DRAFT, SUBMITTED
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  results     InspectionResult[]
+}
+
+model InspectionResult {
+  id            String   @id @default(cuid())
+  inspectionId  String
+  checklistItemId String
+  status        String?
   reference     String?
   note          String?
   evidencePdf   String?
   evidenceImg   String?
+  
+  inspection    Inspection    @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
 
-  group         TechChecklistGroup @relation(fields: [groupId], references: [id])
+  @@unique([inspectionId, checklistItemId])
 }
