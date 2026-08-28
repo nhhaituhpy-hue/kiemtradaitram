@@ -35,6 +35,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F4F3EF]">
       <div className="w-full max-w-md p-8 md:p-10 bg-white rounded-xl shadow-sm border border-[#E0DED5]">
+        <div className="mb-8 text-center space-y-2">
+          <h1 className="text-3xl font-extrabold text-blue-800 tracking-tight uppercase">ATTECH</h1>
+          <p className="text-gray-500 font-medium text-sm uppercase tracking-wide">Hệ thống quản lý hồ sơ đài trạm CNS</p>
+        </div>
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-4">
             <div>
