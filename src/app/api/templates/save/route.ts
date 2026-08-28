@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
               orderIndex: item.orderIndex.toString(),
               title: item.title,
               statusOptions: item.statusOptions || null,
+              // @ts-ignore
               reference: item.reference || null,
             },
             create: {
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
               orderIndex: item.orderIndex.toString(),
               title: item.title,
               statusOptions: item.statusOptions || null,
+              // @ts-ignore
               reference: item.reference || null,
             }
           });
