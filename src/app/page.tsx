@@ -44,8 +44,8 @@ export default function LoginPage() {
       <div className="w-full max-w-[420px] bg-white/70 backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white p-8 sm:p-10 relative z-10 animate-in fade-in zoom-in-95 duration-500">
         
         {/* Brand & Heading */}
-        <div className="flex flex-col items-center mb-10 text-center">
-          <div className="mb-2">
+        <div className="flex flex-col items-center mb-8 text-center">
+          <div>
             <h1 className="text-4xl font-black tracking-tight flex items-center justify-center">
               <span className="text-[#e63946] drop-shadow-sm">A</span>
               <span className="text-blue-700 drop-shadow-sm">TTECH</span>
@@ -54,13 +54,6 @@ export default function LoginPage() {
               Sáng tạo và Thích nghi
             </p>
           </div>
-          
-          <h2 className="text-2xl font-bold text-zinc-800 tracking-wide mt-4">
-            SIRMS
-          </h2>
-          <p className="mt-1 text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-            Hệ thống quản lý hồ sơ đài trạm
-          </p>
         </div>
 
         {/* Login Form */}
