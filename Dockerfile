@@ -10,9 +10,8 @@ RUN npm run build
 
 FROM base AS runner
 WORKDIR /app
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
-# Install bash for the start script
 RUN apk add --no-cache bash
 
 COPY --from=builder /app/public ./public
@@ -27,6 +26,6 @@ RUN chmod +x ./start.sh
 
 EXPOSE 3000
 
-ENV PORT 3000
+ENV PORT=3000
 
 CMD ["./start.sh"]

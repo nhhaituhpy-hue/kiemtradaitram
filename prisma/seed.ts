@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { defaultCategories } from '../src/data/categories';
-import { techChecklist } from '../src/data/techChecklist';
-import { smsChecklist } from '../src/data/smsChecklist';
-import { pcccChecklist } from '../src/data/pcccChecklist';
-import { pcttChecklist } from '../src/data/pcttChecklist';
-import { atttChecklist } from '../src/data/atttChecklist';
-import { btctChecklist } from '../src/data/btctChecklist';
-import { atvsldChecklist } from '../src/data/atvsldChecklist';
+import { mockTechChecklist } from '../src/data/techChecklist';
+import { mockSmsChecklist } from '../src/data/smsChecklist';
+import { mockPcccChecklist } from '../src/data/pcccChecklist';
+import { mockPcttChecklist } from '../src/data/pcttChecklist';
+import { mockAtttChecklist } from '../src/data/atttChecklist';
+import { mockBtctChecklist } from '../src/data/btctChecklist';
+import { mockAtvsldChecklist } from '../src/data/atvsldChecklist';
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,6 @@ async function main() {
         title: cat.title,
         shortTitle: cat.shortTitle,
         subtitle: cat.subtitle,
-        description: cat.description,
         iconName: cat.iconName,
         color: cat.color,
         hoverColor: cat.hoverColor,
@@ -33,7 +32,6 @@ async function main() {
         title: cat.title,
         shortTitle: cat.shortTitle,
         subtitle: cat.subtitle,
-        description: cat.description,
         iconName: cat.iconName,
         color: cat.color,
         hoverColor: cat.hoverColor,
@@ -46,13 +44,13 @@ async function main() {
 
   // 2. Map checklist arrays to category IDs
   const checklists: Record<string, any[]> = {
-    'quan-ly-ky-thuat': techChecklist,
-    'an-toan-hang-khong': smsChecklist,
-    'phong-chay-chua-chay': pcccChecklist,
-    'phong-chong-thien-tai': pcttChecklist,
-    'an-toan-thong-tin': atttChecklist,
-    'bao-tri-cong-trinh': btctChecklist,
-    'an-toan-lao-dong': atvsldChecklist,
+    'quan-ly-ky-thuat': mockTechChecklist,
+    'quan-ly-an-toan-sms': mockSmsChecklist,
+    'phong-chay-chua-chay': mockPcccChecklist,
+    'phong-chong-thien-tai': mockPcttChecklist,
+    'an-toan-thong-tin': mockAtttChecklist,
+    'bao-tri-cong-trinh': mockBtctChecklist,
+    'an-toan-lao-dong': mockAtvsldChecklist,
   };
 
   // 3. Seed Checklist Groups and Items
@@ -79,7 +77,7 @@ async function main() {
             groupId: createdGroup.id,
             orderIndex: item.orderIndex.toString(),
             title: item.title,
-            statusOptions: item.statusOptions,
+            statusOptions: item.statusOptions || null,
           }
         });
       }
@@ -88,7 +86,7 @@ async function main() {
   }
 
   // 4. Seed Default Users
-  const defaultUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'admin' },
     update: {},
     create: {
@@ -100,7 +98,7 @@ async function main() {
     }
   });
   
-  const testUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'tuh' },
     update: {},
     create: {

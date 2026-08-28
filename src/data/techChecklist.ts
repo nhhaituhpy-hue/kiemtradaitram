@@ -3,12 +3,15 @@ export type TechChecklistItem = {
   id: string;
   orderIndex: string;
   title: string;
-  statusOptions: string;
+  statusOptions?: string;
   status: string | null;
   reference: string;
   note: string;
-  evidencePdf: string | null;
-  evidenceImg: string | null;
+  evidencePdf?: string | null;
+  evidenceImg?: string | null;
+  // Plural forms used by multi-reference evidence upload
+  evidencePdfs?: Record<number, { url: string; uploadedAt: string }>;
+  evidenceImgs?: Record<number, { url: string; uploadedAt: string }>;
 };
 
 export type TechChecklistGroup = {
