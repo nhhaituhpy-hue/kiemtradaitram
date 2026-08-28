@@ -25,6 +25,13 @@ export async function POST(request: NextRequest) {
        return NextResponse.json({ error: 'Không tìm thấy user nào trong hệ thống' }, { status: 404 });
     }
 
+    // Đảm bảo category tồn tại để tránh lỗi Foreign Key
+    await prisma.category.upsert({
+      where: { id: categoryId },
+      update: {},
+      create: { id: categoryId, title: categoryId }
+    });
+
     // Lấy hoặc tạo bản ghi Inspection
     let inspection = await prisma.inspection.findFirst({
       where: { userId: user.id, categoryId }

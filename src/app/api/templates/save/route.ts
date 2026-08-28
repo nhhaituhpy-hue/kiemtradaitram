@@ -12,6 +12,16 @@ export async function POST(request: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
+      // 0. Đảm bảo Category tồn tại để tránh lỗi Foreign Key Constraint
+      await tx.category.upsert({
+        where: { id: categoryId },
+        update: {},
+        create: {
+          id: categoryId,
+          title: categoryId, // Dùng ID làm title tạm thời
+        }
+      });
+
       const payloadGroupIds = groups.map((g: any) => g.id);
 
       // 1. Xóa các Group không còn trong danh sách mới
