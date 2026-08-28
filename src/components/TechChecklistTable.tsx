@@ -83,14 +83,18 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     }
   }, [categoryId, storageKey]);
 
-  const handleStatusChange = (groupId: string, itemId: string, status: string) => {
+  const handleStatusChange = (groupId: string, itemId: string, refIdx: number, status: string) => {
     setData((prevData) => {
       const newData = [...prevData];
       const groupIndex = newData.findIndex(g => g.id === groupId);
       if (groupIndex !== -1) {
         const itemIndex = newData[groupIndex].items.findIndex(i => i.id === itemId);
         if (itemIndex !== -1) {
-          newData[groupIndex].items[itemIndex].status = status;
+          const item = newData[groupIndex].items[itemIndex];
+          if (typeof item.status === 'string' || item.status === null) {
+            item.status = item.status ? { 0: item.status } : {};
+          }
+          item.status = { ...item.status, [refIdx]: status };
         }
       }
       return newData;
@@ -224,7 +228,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     });
   };
 
-  const renderStatusRadios = (group: TechChecklistGroup, item: any) => {
+  const renderStatusRadios = (group: TechChecklistGroup, item: any, refIdx: number) => {
     let opts = item.statusOptions 
       ? item.statusOptions.split('\n').map((o: string) => o.trim()).filter(Boolean) 
       : ["Có", "Không"];
@@ -241,16 +245,23 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       opts = ["Đạt", "Không đạt"];
     }
 
+    let currentStatus = null;
+    if (item.status && typeof item.status === 'object') {
+       currentStatus = item.status[refIdx];
+    } else if (refIdx === 0 && typeof item.status === 'string') {
+       currentStatus = item.status;
+    }
+
     return (
       <div className="flex flex-col gap-2">
         {opts.map((opt: string) => (
           <label key={opt} className="flex items-center gap-2 cursor-pointer group w-full">
             <input 
               type="radio" 
-              name={`status-${item.id}`} 
+              name={`status-${item.id}-${refIdx}`} 
               value={opt} 
-              checked={item.status === opt}
-              onChange={() => handleStatusChange(group.id, item.id, opt)}
+              checked={currentStatus === opt}
+              onChange={() => handleStatusChange(group.id, item.id, refIdx, opt)}
               className="w-4 h-4 text-[#8a9a5b] bg-[#F4F3EF] border-[#E0DED5] focus:ring-[#C3CFA2] focus:ring-2 cursor-pointer shrink-0"
             />
             <span className="text-sm text-zinc-700 group-hover:text-zinc-900">{opt}</span>
@@ -364,11 +375,12 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                 <td rowSpan={numRows} className="px-4 py-3 text-sm text-zinc-800 align-top pt-4 border-r border-[#E0DED5]/30">
                                   <div className="font-medium mb-1 whitespace-pre-wrap leading-relaxed">{item.title}</div>
                                 </td>
-                                <td rowSpan={numRows} className="px-4 py-3 align-top pt-4 border-r border-[#E0DED5]/30">
-                                  {renderStatusRadios(group, item)}
-                                </td>
                               </>
                             )}
+                            
+                            <td className="px-4 py-3 align-top pt-4 border-r border-[#E0DED5]/30">
+                              {renderStatusRadios(group, item, idx)}
+                            </td>
                             
                             {categoryId !== "an-toan-thong-tin" && categoryId !== "bao-tri-cong-trinh" && (
                               <td className="px-4 py-3 text-xs text-zinc-600 align-top group/ref relative min-w-[200px] border-l border-[#E0DED5]/30">

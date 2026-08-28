@@ -4,7 +4,7 @@ export type TechChecklistItem = {
   orderIndex: string;
   title: string;
   statusOptions?: string;
-  status: string | null;
+  status: string | Record<number, string> | null;
   reference: string;
   note: string;
   evidencePdf?: string | null;
