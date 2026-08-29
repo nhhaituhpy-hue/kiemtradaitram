@@ -373,6 +373,14 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     return data.uploadedAt;
   };
 
+  const getEvidenceCount = (data: unknown) => {
+    if (!data) return 0;
+    if (Array.isArray(data)) {
+      return data.filter((file) => Boolean(extractUrl(file))).length;
+    }
+    return extractUrl(data) ? 1 : 0;
+  };
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -564,31 +572,51 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                 const imgData = item.evidenceImgs?.[idx] || (idx === 0 && typeof item.evidenceImg === 'string' ? item.evidenceImg : null);
                                 const pdfUrl = extractUrl(pdfData);
                                 const imgUrl = extractUrl(imgData);
-                                  
+                                const pdfCount = getEvidenceCount(pdfData);
+                                const imgCount = getEvidenceCount(imgData);
+
                                 return (
                                   <td className="px-4 py-2 text-center align-top border-l border-[#E0DED5]/30">
                                     <div className="flex items-center justify-center gap-2 mt-1">
                                       <button 
-                                        title="Tải lên / Xem PDF" 
+                                        title={`Tải lên / Xem PDF${pdfCount > 0 ? ` (${pdfCount} tài liệu)` : ''}`}
+                                        aria-label={`Tải lên hoặc xem PDF${pdfCount > 0 ? `, hiện có ${pdfCount} tài liệu` : ''}`}
                                         onClick={() => openModal(group, item, "pdf", refs[idx], idx)}
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
+                                        className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
                                           pdfUrl 
                                             ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" 
                                             : "bg-[#F4F3EF] text-red-500 hover:bg-[#E0DED5] border-transparent hover:border-[#D6D4CB]"
                                         }`}
                                       >
                                         <FileText size={16} />
+                                        {pdfCount > 0 && (
+                                          <span
+                                            aria-hidden="true"
+                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+                                          >
+                                            {pdfCount > 99 ? '99+' : pdfCount}
+                                          </span>
+                                        )}
                                       </button>
                                       <button 
-                                        title="Tải lên / Xem Ảnh" 
+                                        title={`Tải lên / Xem Ảnh${imgCount > 0 ? ` (${imgCount} tài liệu)` : ''}`}
+                                        aria-label={`Tải lên hoặc xem hình ảnh${imgCount > 0 ? `, hiện có ${imgCount} tài liệu` : ''}`}
                                         onClick={() => openModal(group, item, "img", refs[idx], idx)}
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
+                                        className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
                                           imgUrl 
                                             ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100" 
                                             : "bg-[#F4F3EF] text-blue-500 hover:bg-[#E0DED5] border-transparent hover:border-[#D6D4CB]"
                                         }`}
                                       >
                                         <ImageIcon size={16} />
+                                        {imgCount > 0 && (
+                                          <span
+                                            aria-hidden="true"
+                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+                                          >
+                                            {imgCount > 99 ? '99+' : imgCount}
+                                          </span>
+                                        )}
                                       </button>
                                     </div>
                                   </td>
