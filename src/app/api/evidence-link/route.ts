@@ -44,15 +44,29 @@ const getFileDestination = (file: EvidenceFile) => {
   if (typeof file === 'string') return file;
   if (!file || typeof file !== 'object') return null;
 
-  if (typeof file.url === 'string' && file.url.trim()) {
-    return file.url;
-  }
-
   if (typeof file.key === 'string' && file.key.trim()) {
     return `/api/files/${encodeURIComponent(file.key)}`;
   }
 
+  if (typeof file.url === 'string' && file.url.trim()) {
+    return file.url;
+  }
+
   return null;
+};
+
+const getInternalDestination = (destinationValue: string, requestUrl: string) => {
+  const parsedDestination = new URL(destinationValue, requestUrl);
+  const isAllowedPath = parsedDestination.pathname.startsWith('/api/files/') || parsedDestination.pathname === '/api/evidence-link';
+
+  if (!isAllowedPath) return null;
+
+  // Rebase old localhost/previous-domain URLs to the host serving this request.
+  const destination = new URL(requestUrl);
+  destination.pathname = parsedDestination.pathname;
+  destination.search = parsedDestination.search;
+  destination.hash = parsedDestination.hash;
+  return destination;
 };
 
 export async function GET(request: NextRequest) {
@@ -108,11 +122,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tài liệu nguồn không hợp lệ' }, { status: 404 });
     }
 
-    const destination = new URL(destinationValue, request.url);
-    const requestOrigin = new URL(request.url).origin;
-    const isAllowedPath = destination.pathname.startsWith('/api/files/') || destination.pathname === '/api/evidence-link';
-
-    if (destination.origin !== requestOrigin || !isAllowedPath) {
+    const destination = getInternalDestination(destinationValue, request.url);
+    if (!destination) {
       return NextResponse.json({ error: 'Link tài liệu nguồn không hợp lệ' }, { status: 400 });
     }
 

@@ -436,8 +436,19 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
   const extractUrl = (data: any) => {
     if (!data) return null;
-    if (typeof data === 'string') return data;
-    return data.url;
+    const rawUrl = typeof data === 'string' ? data : data.url;
+    if (typeof rawUrl !== 'string') return null;
+
+    try {
+      const parsedUrl = new URL(rawUrl, window.location.origin);
+      if (parsedUrl.pathname.startsWith('/api/files/') || parsedUrl.pathname === '/api/evidence-link') {
+        return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+      }
+    } catch {
+      // Keep the original value so legacy records can still be inspected.
+    }
+
+    return rawUrl;
   };
 
   const extractTimestamp = (data: any) => {
@@ -904,7 +915,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
                   const hasFiles = fileList.length > 0;
                   const currentFile = hasFiles ? fileList[activeFileIndex] : null;
-                  const currentUrl = extractUrl(currentFile);
+                  const currentUrl = extractUrl(currentFile) || "";
                   const uploadedAt = extractTimestamp(currentFile);
                   const currentFileIsLink = Boolean(
                     currentFile &&
