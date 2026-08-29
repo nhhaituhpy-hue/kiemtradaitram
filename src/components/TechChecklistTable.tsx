@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { FileText, Image as ImageIcon, X, Save, Check, Pen, Trash2, RefreshCw, Maximize, ArrowLeft, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { TechChecklistGroup, mockTechChecklist } from "@/data/techChecklist";
+import { FileText, Image as ImageIcon, X, Save, Check, Pen, Trash2, RefreshCw, Maximize, ArrowLeft, ChevronLeft, ChevronRight, Plus, Copy, Link as LinkIcon } from "lucide-react";
+import { EvidenceSourceRef, TechChecklistGroup, mockTechChecklist } from "@/data/techChecklist";
 import { mockSmsChecklist } from "@/data/smsChecklist";
 import { mockAtvsldChecklist } from "@/data/atvsldChecklist";
 import { mockPcccChecklist } from "@/data/pcccChecklist";
@@ -32,11 +32,26 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const [editingRef, setEditingRef] = useState<{ id: string, idx: number, value: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<"preparing" | "sending" | "saving" | "complete" | null>(null);
   const [activeFileIndex, setActiveFileIndex] = useState(0);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [pastedLink, setPastedLink] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const uploadProgressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const uploadProgressValueRef = useRef(0);
   const params = useParams();
   const router = useRouter();
   const unitParam = params?.unit as string;
+
+  useEffect(() => {
+    return () => {
+      if (uploadProgressTimerRef.current !== null) {
+        clearTimeout(uploadProgressTimerRef.current);
+      }
+    };
+  }, []);
 
   const openModal = (group: any, item: any, type: "pdf" | "img", refText: string | undefined, refIdx: number) => {
     setActiveGroupId(group.id);
@@ -45,6 +60,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     setActiveRef(refText || null);
     setActiveRefIdx(refIdx);
     setActiveFileIndex(0);
+    setShowLinkInput(false);
+    setPastedLink("");
+    setLinkError("");
+    setCopiedLink(false);
     setModalOpen(true);
   };
 
@@ -156,6 +175,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
   const closeModal = () => {
     setModalOpen(false);
+    setShowLinkInput(false);
+    setPastedLink("");
+    setLinkError("");
+    setCopiedLink(false);
     setTimeout(() => {
       setActiveItem(null);
       setActiveGroupId(null);
@@ -166,11 +189,52 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     }, 200);
   };
 
+  const stopUploadProgressSimulation = () => {
+    if (uploadProgressTimerRef.current !== null) {
+      clearTimeout(uploadProgressTimerRef.current);
+      uploadProgressTimerRef.current = null;
+    }
+  };
+
+  const updateUploadProgress = (value: number) => {
+    uploadProgressValueRef.current = value;
+    setUploadProgress(value);
+  };
+
+  const animateUploadProgressTo = (target: number, intervalMs: number) => {
+    stopUploadProgressSimulation();
+
+    return new Promise<void>((resolve) => {
+      const tick = () => {
+        const next = Math.min(target, uploadProgressValueRef.current + 1);
+        updateUploadProgress(next);
+
+        if (next >= target) {
+          uploadProgressTimerRef.current = null;
+          resolve();
+          return;
+        }
+
+        uploadProgressTimerRef.current = setTimeout(tick, intervalMs);
+      };
+
+      if (uploadProgressValueRef.current >= target) {
+        resolve();
+        return;
+      }
+
+      uploadProgressTimerRef.current = setTimeout(tick, intervalMs);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeItem || !activeGroupId || !modalType || activeRefIdx === null) return;
     
-    setUploadProgress(0);
+    stopUploadProgressSimulation();
+    updateUploadProgress(0);
+    setUploadPhase("preparing");
+    setCopiedLink(false);
     setUploading(true);
     try {
       const formData = new FormData();
@@ -179,17 +243,19 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       formData.append('itemId', activeItem.id);
       formData.append('fileType', modalType);
 
+      // Keep the preparation state visible before the upload starts.
+      await new Promise<void>((resolve) => setTimeout(resolve, 120));
+      setUploadPhase("sending");
+      void animateUploadProgressTo(85, 40);
+
       const result = await new Promise<UploadResponse>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
         xhr.open('POST', '/api/upload');
 
-        xhr.upload.onprogress = (event) => {
-          if (!event.lengthComputable) return;
-
-          // Keep 100% for the moment the API confirms the upload is complete.
-          const progress = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(Math.min(progress, 99));
+        xhr.upload.onload = () => {
+          setUploadPhase("saving");
+          void animateUploadProgressTo(90, 20);
         };
 
         xhr.onload = () => {
@@ -221,7 +287,11 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
         return;
       }
 
-      setUploadProgress(100);
+      setUploadPhase("saving");
+      await animateUploadProgressTo(90, 10);
+      updateUploadProgress(100);
+      setUploadPhase("complete");
+      await new Promise<void>((resolve) => setTimeout(resolve, 350));
 
       const now = new Date();
       const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
@@ -256,7 +326,9 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       console.error('Upload error:', err);
       alert(err instanceof Error ? err.message : 'Lỗi kết nối khi tải file lên.');
     } finally {
+      stopUploadProgressSimulation();
       setUploading(false);
+      setUploadPhase(null);
     }
   };
 
@@ -371,6 +443,141 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const extractTimestamp = (data: any) => {
     if (!data || typeof data === 'string') return null;
     return data.uploadedAt;
+  };
+
+  const createEvidenceReferenceUrl = (sourceRef: EvidenceSourceRef, absolute = true) => {
+    const url = new URL("/api/evidence-link", window.location.origin);
+    url.searchParams.set("unitParam", sourceRef.unitParam);
+    url.searchParams.set("categoryId", sourceRef.categoryId);
+    url.searchParams.set("itemId", sourceRef.itemId);
+    url.searchParams.set("fileType", sourceRef.fileType);
+    url.searchParams.set("refIdx", String(sourceRef.refIdx));
+    url.searchParams.set("fileIndex", String(sourceRef.fileIndex));
+
+    return absolute ? url.href : `${url.pathname}${url.search}`;
+  };
+
+  const parseEvidenceReference = (url: URL): EvidenceSourceRef | null => {
+    if (url.pathname !== "/api/evidence-link") return null;
+
+    const unitParam = url.searchParams.get("unitParam")?.trim();
+    const categoryId = url.searchParams.get("categoryId")?.trim();
+    const itemId = url.searchParams.get("itemId")?.trim();
+    const fileType = url.searchParams.get("fileType");
+    const refIdx = Number(url.searchParams.get("refIdx"));
+    const fileIndex = Number(url.searchParams.get("fileIndex"));
+
+    if (
+      !unitParam ||
+      !categoryId ||
+      !itemId ||
+      (fileType !== "pdf" && fileType !== "img") ||
+      !Number.isInteger(refIdx) ||
+      refIdx < 0 ||
+      !Number.isInteger(fileIndex) ||
+      fileIndex < 0
+    ) {
+      return null;
+    }
+
+    return { unitParam, categoryId, itemId, fileType, refIdx, fileIndex };
+  };
+
+  const handleCopyLink = async (url: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        if (!document.execCommand("copy")) {
+          throw new Error("Clipboard fallback failed");
+        }
+        textArea.remove();
+      }
+
+      setCopiedLink(true);
+    } catch (err) {
+      console.error("Không thể sao chép link dòng bằng chứng:", err);
+      alert("Không thể sao chép link dòng bằng chứng. Vui lòng chọn và copy thủ công.");
+    }
+  };
+
+  const handleAddPastedLink = () => {
+    if (!activeItem || !activeGroupId || !modalType || activeRefIdx === null) return;
+
+    const value = pastedLink.trim();
+    if (!value) {
+      setLinkError("Vui lòng dán link tài liệu.");
+      return;
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(value, window.location.origin);
+    } catch {
+      setLinkError("Link tài liệu không hợp lệ.");
+      return;
+    }
+
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      setLinkError("Link dòng bằng chứng không hợp lệ.");
+      return;
+    }
+
+    const sourceRef = parseEvidenceReference(parsedUrl);
+    if (!sourceRef) {
+      setLinkError("Hãy dán link dòng bằng chứng được sao chép từ hệ thống.");
+      return;
+    }
+
+    if (sourceRef.fileType !== modalType) {
+      setLinkError(`Link này dành cho ${sourceRef.fileType === "pdf" ? "tài liệu PDF" : "hình ảnh"}.`);
+      return;
+    }
+
+    const reusableUrl = createEvidenceReferenceUrl(sourceRef, false);
+    const now = new Date();
+    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+    const newFile = { url: reusableUrl, uploadedAt: timestamp, source: "reference" as const, sourceRef };
+
+    setData((prevData) => {
+      const newData = [...prevData];
+      const groupIndex = newData.findIndex(g => g.id === activeGroupId);
+      if (groupIndex !== -1) {
+        const itemIndex = newData[groupIndex].items.findIndex(i => i.id === activeItem.id);
+        if (itemIndex !== -1) {
+          const field = modalType === "pdf" ? "evidencePdfs" : "evidenceImgs";
+          const item = newData[groupIndex].items[itemIndex];
+          const currentData = { ...(item[field] || {}) };
+          let existingFiles = currentData[activeRefIdx] || [];
+
+          if (!Array.isArray(existingFiles)) {
+            existingFiles = [existingFiles];
+          }
+
+          const nextFiles = [...existingFiles, newFile];
+          item[field] = {
+            ...currentData,
+            [activeRefIdx]: nextFiles,
+          };
+
+          setActiveItem(item);
+          setActiveFileIndex(existingFiles.length);
+        }
+      }
+      return newData;
+    });
+
+    setShowLinkInput(false);
+    setPastedLink("");
+    setLinkError("");
+    setCopiedLink(false);
   };
 
   const getEvidenceCount = (data: unknown) => {
@@ -699,23 +906,50 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                   const currentFile = hasFiles ? fileList[activeFileIndex] : null;
                   const currentUrl = extractUrl(currentFile);
                   const uploadedAt = extractTimestamp(currentFile);
+                  const currentFileIsLink = Boolean(
+                    currentFile &&
+                    typeof currentFile !== "string" &&
+                    (currentFile.source === "link" || currentFile.source === "reference")
+                  );
+                  const currentSourceRef: EvidenceSourceRef | null =
+                    currentFile && typeof currentFile !== "string" && currentFile.sourceRef
+                      ? currentFile.sourceRef
+                      : activeItem?.id && modalType && activeRefIdx !== null
+                        ? {
+                            unitParam: unitParam || "tuh",
+                            categoryId,
+                            itemId: activeItem.id,
+                            fileType: modalType,
+                            refIdx: activeRefIdx,
+                            fileIndex: activeFileIndex,
+                          }
+                        : null;
+                  const evidenceReferenceUrl = hasFiles && currentSourceRef
+                    ? createEvidenceReferenceUrl(currentSourceRef)
+                    : "";
 
                    return (
                      <div>
                        {uploading && (
                          <div
                            className="mb-4 rounded-lg border border-[#D6D4CB] bg-[#F9F8F6] p-4"
-                           role="status"
-                           aria-live="polite"
                          >
                            <div className="flex items-center justify-between gap-3 text-sm">
-                             <span className="font-medium text-zinc-700">Đang tải lên MinIO Storage...</span>
+                             <span className="font-medium text-zinc-700" role="status" aria-live="polite">
+                               {uploadPhase === "preparing"
+                                 ? "Đang chuẩn bị tài liệu..."
+                                 : uploadPhase === "saving"
+                                   ? "Đang lưu tài liệu vào CSDL..."
+                                   : uploadPhase === "complete"
+                                     ? "Tải lên hoàn tất"
+                                    : "Đang truyền tài liệu..."}
+                             </span>
                              <span className="font-semibold text-zinc-800">{uploadProgress}%</span>
                            </div>
                            <div
                              className="mt-3 h-2 overflow-hidden rounded-full bg-[#E0DED5]"
                              role="progressbar"
-                             aria-label="Tiến trình tải file lên MinIO"
+                             aria-label="Tiến trình tải file lên CSDL"
                              aria-valuemin={0}
                              aria-valuemax={100}
                              aria-valuenow={uploadProgress}
@@ -725,10 +959,71 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                style={{ width: `${uploadProgress}%` }}
                              />
                            </div>
-                           <div className="mt-2 text-xs text-zinc-500">
-                             {uploadProgress < 100 ? 'Đang truyền dữ liệu...' : 'Đang hoàn tất...'}
-                           </div>
+                            <div className="mt-2 text-xs text-zinc-500">
+                              {uploadPhase === "preparing"
+                                ? "Đang tạo yêu cầu tải lên..."
+                                : uploadPhase === "saving"
+                                  ? "Đã gửi file, hệ thống đang lưu vào CSDL..."
+                                  : uploadPhase === "complete"
+                                    ? "Tài liệu đã được lưu thành công."
+                                    : "Đang truyền dữ liệu..."}
+                            </div>
                          </div>
+                       )}
+
+                       {showLinkInput && (
+                         <form
+                           onSubmit={(event) => {
+                             event.preventDefault();
+                             handleAddPastedLink();
+                           }}
+                           className="mb-4 rounded-lg border border-[#D6D4CB] bg-[#F9F8F6] p-4"
+                         >
+                           <label htmlFor="evidence-pasted-link" className="mb-2 block text-sm font-medium text-zinc-700">
+                             Dán link dòng bằng chứng
+                           </label>
+                           <div className="flex flex-col gap-2 sm:flex-row">
+                             <input
+                               id="evidence-pasted-link"
+                               type="text"
+                               value={pastedLink}
+                               onChange={(event) => {
+                                 setPastedLink(event.target.value);
+                                 if (linkError) setLinkError("");
+                               }}
+                               placeholder="Dán link tài liệu đã có..."
+                               autoFocus
+                               disabled={uploading}
+                               aria-invalid={Boolean(linkError)}
+                               aria-describedby={linkError ? "evidence-pasted-link-error" : undefined}
+                               className="min-h-11 min-w-0 flex-1 rounded-lg border border-[#D6D4CB] bg-white px-3 text-sm text-zinc-700 outline-none transition-colors placeholder:text-zinc-400 focus:border-[#A8B682] focus:ring-2 focus:ring-[#C3CFA2]"
+                             />
+                             <button
+                               type="submit"
+                               disabled={uploading}
+                               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#7C8A5B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#68764B] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:cursor-not-allowed disabled:opacity-60"
+                             >
+                               <LinkIcon size={16} />
+                               Thêm link
+                             </button>
+                             <button
+                               type="button"
+                               onClick={() => {
+                                 setShowLinkInput(false);
+                                 setPastedLink("");
+                                 setLinkError("");
+                               }}
+                               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#D6D4CB] bg-white px-4 text-sm font-medium text-zinc-600 transition-colors hover:bg-[#F4F3EF] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2]"
+                             >
+                               Hủy
+                             </button>
+                           </div>
+                           {linkError && (
+                             <p id="evidence-pasted-link-error" role="alert" className="mt-2 text-xs text-red-600">
+                               {linkError}
+                             </p>
+                           )}
+                         </form>
                        )}
 
                        {hasFiles ? (
@@ -737,7 +1032,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                       {fileList.length > 1 && (
                         <div className="flex items-center justify-between mb-3 bg-[#F4F3EF] p-2 rounded-lg border border-[#E0DED5]">
                           <button
-                             onClick={() => setActiveFileIndex(prev => Math.max(0, prev - 1))}
+                             onClick={() => {
+                               setActiveFileIndex(prev => Math.max(0, prev - 1));
+                               setCopiedLink(false);
+                             }}
                              disabled={activeFileIndex === 0}
                              className="p-1.5 rounded bg-white shadow-sm border border-[#E0DED5] disabled:opacity-50 text-zinc-600 hover:text-zinc-900 transition-colors"
                           >
@@ -745,7 +1043,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                           </button>
                           <span className="text-sm font-semibold text-zinc-700">Tài liệu {activeFileIndex + 1} / {fileList.length}</span>
                           <button
-                             onClick={() => setActiveFileIndex(prev => Math.min(fileList.length - 1, prev + 1))}
+                             onClick={() => {
+                               setActiveFileIndex(prev => Math.min(fileList.length - 1, prev + 1));
+                               setCopiedLink(false);
+                             }}
                              disabled={activeFileIndex === fileList.length - 1}
                              className="p-1.5 rounded bg-white shadow-sm border border-[#E0DED5] disabled:opacity-50 text-zinc-600 hover:text-zinc-900 transition-colors"
                           >
@@ -770,23 +1071,65 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                         {uploadedAt && (
                           <div className="absolute bottom-2 right-2 px-2.5 py-1 bg-black/60 backdrop-blur-sm text-white text-[11px] rounded flex items-center gap-1.5 shadow-sm">
                             <Check size={12} className="text-[#C3CFA2]" />
-                            Đã tải lên lúc: {uploadedAt}
+                            {currentFileIsLink ? "Đã liên kết lúc:" : "Đã tải lên lúc:"} {uploadedAt}
                           </div>
                         )}
                       </div>
+
+                      {evidenceReferenceUrl && (
+                        <div className="mb-4">
+                          <label htmlFor="evidence-current-link" className="mb-2 block text-sm font-medium text-zinc-700">
+                            Link dòng bằng chứng
+                          </label>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <input
+                              id="evidence-current-link"
+                              type="text"
+                              readOnly
+                              value={evidenceReferenceUrl}
+                              onFocus={(event) => event.currentTarget.select()}
+                              aria-label="Link dòng bằng chứng hiện tại"
+                              className="min-h-11 min-w-0 flex-1 rounded-lg border border-[#D6D4CB] bg-[#F9F8F6] px-3 text-sm text-zinc-600 outline-none focus:border-[#A8B682] focus:ring-2 focus:ring-[#C3CFA2]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void handleCopyLink(evidenceReferenceUrl)}
+                              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#D6D4CB] bg-white px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#F4F3EF] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2]"
+                            >
+                              {copiedLink ? <Check size={16} className="text-[#7C8A5B]" /> : <Copy size={16} />}
+                              {copiedLink ? "Đã sao chép" : "Sao chép link"}
+                            </button>
+                          </div>
+                          <p className="mt-2 text-xs text-zinc-500">
+                            Link này luôn trỏ tới tài liệu hiện tại của dòng nguồn. Hãy lưu thay đổi để các dòng dùng chung nhận file mới.
+                          </p>
+                        </div>
+                      )}
                       
-                      <div className="flex justify-center gap-3">
+                      <div className="flex flex-wrap justify-center gap-3">
                         <button 
                           onClick={() => !uploading && fileRef.current?.click()}
                           disabled={uploading}
-                          className="flex items-center gap-2 px-4 py-2 bg-[#F4F3EF] hover:bg-[#E0DED5] text-zinc-700 rounded-lg font-medium text-sm transition-colors border border-[#D6D4CB] disabled:opacity-60"
+                          className="flex min-h-11 items-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
                         >
                           {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
                           Tải thêm
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowLinkInput(true);
+                            setLinkError("");
+                          }}
+                          disabled={uploading}
+                          className="flex min-h-11 items-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
+                        >
+                          <LinkIcon size={16} />
+                          Dán link dòng bằng chứng
+                        </button>
                         <button 
                           onClick={handleRemoveFile}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium text-sm transition-colors border border-red-200"
+                          className="flex min-h-11 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-200"
                         >
                           <Trash2 size={16} />
                           Xóa tài liệu này
@@ -794,37 +1137,62 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                       </div>
                     </div>
                        ) : (
-                     <div
-                      onClick={() => !uploading && fileRef.current?.click()}
-                      className={`border-2 border-dashed border-[#D6D4CB] rounded-xl p-8 flex flex-col items-center justify-center text-center bg-[#F9F8F6] transition-colors ${uploading ? 'opacity-60 cursor-wait' : 'hover:bg-[#F4F3EF] cursor-pointer group'}`}
-                    >
-                      {uploading ? (
-                        <>
-                          <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 animate-spin">
-                            <RefreshCw className="text-zinc-500" size={24} />
-                          </div>
-                          <p className="text-sm font-medium text-zinc-700">
-                            Đang tải lên MinIO Storage...
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                            {modalType === "pdf" ? (
-                              <FileText className="text-red-500" size={24} />
+                         <>
+                           <div
+                            onClick={() => !uploading && fileRef.current?.click()}
+                            className={`border-2 border-dashed border-[#D6D4CB] rounded-xl p-8 flex flex-col items-center justify-center text-center bg-[#F9F8F6] transition-colors ${uploading ? 'opacity-60 cursor-wait' : 'hover:bg-[#F4F3EF] cursor-pointer group'}`}
+                          >
+                            {uploading ? (
+                              <>
+                                <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 animate-spin">
+                                  <RefreshCw className="text-zinc-500" size={24} />
+                                </div>
+                                <p className="text-sm font-medium text-zinc-700">
+                                  Đang tải lên CSDL...
+                                </p>
+                              </>
                             ) : (
-                              <ImageIcon className="text-blue-500" size={24} />
+                              <>
+                                <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                  {modalType === "pdf" ? (
+                                    <FileText className="text-red-500" size={24} />
+                                  ) : (
+                                    <ImageIcon className="text-blue-500" size={24} />
+                                  )}
+                                </div>
+                                <p className="text-sm font-medium text-zinc-700">
+                                  Nhấn để tải lên {modalType === "pdf" ? "file PDF" : "hình ảnh"}
+                                </p>
+                                <p className="text-xs text-zinc-500 mt-1">
+                                  File sẽ được lưu trữ trên hệ thống CSDL
+                                </p>
+                              </>
                             )}
                           </div>
-                          <p className="text-sm font-medium text-zinc-700">
-                            Nhấn để tải lên {modalType === "pdf" ? "file PDF" : "hình ảnh"}
-                          </p>
-                          <p className="text-xs text-zinc-500 mt-1">
-                            File sẽ được lưu trữ trên hệ thống MinIO Storage
-                          </p>
-                        </>
-                      )}
-                    </div>
+                          <div className="mt-4 flex flex-wrap justify-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => !uploading && fileRef.current?.click()}
+                              disabled={uploading}
+                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
+                            >
+                              {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
+                              Tải tài liệu mới
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowLinkInput(true);
+                                setLinkError("");
+                              }}
+                              disabled={uploading}
+                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
+                            >
+                              <LinkIcon size={16} />
+                              Dán link dòng bằng chứng
+                            </button>
+                          </div>
+                         </>
                        )}
                      </div>
                    );
