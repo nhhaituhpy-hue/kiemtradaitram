@@ -12,6 +12,14 @@ import { mockBtctChecklist } from "@/data/btctChecklist";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 
+type UploadResponse = {
+  success?: boolean;
+  error?: string;
+  details?: string;
+  url?: string;
+  key?: string;
+};
+
 export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: { categoryId?: string }) {
   const [data, setData] = useState<TechChecklistGroup[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -23,6 +31,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingRef, setEditingRef] = useState<{ id: string, idx: number, value: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [activeFileIndex, setActiveFileIndex] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const params = useParams();
@@ -161,6 +170,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     const file = e.target.files?.[0];
     if (!file || !activeItem || !activeGroupId || !modalType || activeRefIdx === null) return;
     
+    setUploadProgress(0);
     setUploading(true);
     try {
       const formData = new FormData();
@@ -169,13 +179,49 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       formData.append('itemId', activeItem.id);
       formData.append('fileType', modalType);
 
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const result = await res.json();
+      const result = await new Promise<UploadResponse>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
 
-      if (!result.success) {
-        alert('Upload thất bại: ' + (result.error || 'Unknown error'));
+        xhr.open('POST', '/api/upload');
+
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable) return;
+
+          // Keep 100% for the moment the API confirms the upload is complete.
+          const progress = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(Math.min(progress, 99));
+        };
+
+        xhr.onload = () => {
+          let response: UploadResponse = {};
+
+          try {
+            response = JSON.parse(xhr.responseText);
+          } catch {
+            // The API normally returns JSON; keep a safe fallback for malformed responses.
+          }
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(response);
+          } else {
+            reject(new Error(response.error || response.details || 'Upload thất bại'));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Lỗi kết nối khi tải file lên.'));
+        xhr.onabort = () => reject(new Error('Upload đã bị hủy.'));
+        xhr.send(formData);
+      });
+
+      const uploadedUrl = result.url;
+      const uploadedKey = result.key;
+
+      if (!result.success || !uploadedUrl || !uploadedKey) {
+        alert('Upload thất bại: ' + (result.error || 'Phản hồi từ server không hợp lệ'));
         return;
       }
+
+      setUploadProgress(100);
 
       const now = new Date();
       const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
@@ -193,7 +239,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
             if (!Array.isArray(existingFiles)) {
                 existingFiles = [existingFiles];
             }
-            const newFile = { url: result.url, key: result.key, uploadedAt: timestamp };
+            const newFile = { url: uploadedUrl, key: uploadedKey, uploadedAt: timestamp };
             
             newData[groupIndex].items[itemIndex][field] = {
               ...currentData,
@@ -208,7 +254,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       });
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Lỗi kết nối khi tải file lên.');
+      alert(err instanceof Error ? err.message : 'Lỗi kết nối khi tải file lên.');
     } finally {
       setUploading(false);
     }
@@ -626,8 +672,39 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                   const currentUrl = extractUrl(currentFile);
                   const uploadedAt = extractTimestamp(currentFile);
 
-                  return hasFiles ? (
-                    <div className="flex flex-col h-full w-full animate-in fade-in zoom-in-95 duration-200">
+                   return (
+                     <div>
+                       {uploading && (
+                         <div
+                           className="mb-4 rounded-lg border border-[#D6D4CB] bg-[#F9F8F6] p-4"
+                           role="status"
+                           aria-live="polite"
+                         >
+                           <div className="flex items-center justify-between gap-3 text-sm">
+                             <span className="font-medium text-zinc-700">Đang tải lên MinIO Storage...</span>
+                             <span className="font-semibold text-zinc-800">{uploadProgress}%</span>
+                           </div>
+                           <div
+                             className="mt-3 h-2 overflow-hidden rounded-full bg-[#E0DED5]"
+                             role="progressbar"
+                             aria-label="Tiến trình tải file lên MinIO"
+                             aria-valuemin={0}
+                             aria-valuemax={100}
+                             aria-valuenow={uploadProgress}
+                           >
+                             <div
+                               className="h-full rounded-full bg-[#7C8A5B]"
+                               style={{ width: `${uploadProgress}%` }}
+                             />
+                           </div>
+                           <div className="mt-2 text-xs text-zinc-500">
+                             {uploadProgress < 100 ? 'Đang truyền dữ liệu...' : 'Đang hoàn tất...'}
+                           </div>
+                         </div>
+                       )}
+
+                       {hasFiles ? (
+                     <div className="flex flex-col h-full w-full animate-in fade-in zoom-in-95 duration-200">
                       
                       {fileList.length > 1 && (
                         <div className="flex items-center justify-between mb-3 bg-[#F4F3EF] p-2 rounded-lg border border-[#E0DED5]">
@@ -688,8 +765,8 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <div 
+                       ) : (
+                     <div
                       onClick={() => !uploading && fileRef.current?.click()}
                       className={`border-2 border-dashed border-[#D6D4CB] rounded-xl p-8 flex flex-col items-center justify-center text-center bg-[#F9F8F6] transition-colors ${uploading ? 'opacity-60 cursor-wait' : 'hover:bg-[#F4F3EF] cursor-pointer group'}`}
                     >
@@ -720,8 +797,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                         </>
                       )}
                     </div>
-                  );
-                })()}
+                       )}
+                     </div>
+                   );
+                 })()}
               </div>
               
               <div className="px-6 py-4 border-t border-[#E0DED5] bg-[#F9F8F6] flex justify-end">
