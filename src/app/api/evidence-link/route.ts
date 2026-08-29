@@ -127,7 +127,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Link tài liệu nguồn không hợp lệ' }, { status: 400 });
     }
 
-    const response = NextResponse.redirect(destination);
+    // Use a relative Location so reverse proxies cannot expose their internal
+    // origin (for example https://localhost:3000) to the browser.
+    const response = new NextResponse(null, {
+      status: 307,
+      headers: {
+        Location: `${destination.pathname}${destination.search}${destination.hash}`,
+      },
+    });
     response.headers.set('Cache-Control', 'no-store, max-age=0');
     return response;
   } catch (error) {
