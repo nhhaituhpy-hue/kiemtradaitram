@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { FileText, Image as ImageIcon, X, Save, Check, Pen, Trash2, RefreshCw, Maximize, ArrowLeft, ChevronLeft, ChevronRight, Plus, Copy, Link as LinkIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+import { FileText, Image as ImageIcon, X, Save, Check, Pen, Trash2, RefreshCw, Maximize, ArrowLeft, ChevronLeft, ChevronRight, Plus, Copy, ClipboardPaste, Link as LinkIcon } from "lucide-react";
 import { EvidenceSourceRef, TechChecklistGroup, mockTechChecklist } from "@/data/techChecklist";
 import { mockSmsChecklist } from "@/data/smsChecklist";
 import { mockAtvsldChecklist } from "@/data/atvsldChecklist";
@@ -39,7 +40,6 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const [modalType, setModalType] = useState<"pdf" | "img" | null>(null);
   const [activeItem, setActiveItem] = useState<any>(null);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
-  const [activeRef, setActiveRef] = useState<string | null>(null);
   const [activeRefIdx, setActiveRefIdx] = useState<number | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingRef, setEditingRef] = useState<{ id: string, idx: number, value: string } | null>(null);
@@ -67,11 +67,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     };
   }, []);
 
-  const openModal = (group: any, item: any, type: "pdf" | "img", refText: string | undefined, refIdx: number) => {
+  const openModal = (group: any, item: any, type: "pdf" | "img", refIdx: number) => {
     setActiveGroupId(group.id);
     setActiveItem(item);
     setModalType(type);
-    setActiveRef(refText || null);
     setActiveRefIdx(refIdx);
     setActiveFileIndex(0);
     setShowLinkInput(false);
@@ -204,7 +203,6 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       setActiveItem(null);
       setActiveGroupId(null);
       setModalType(null);
-      setActiveRef(null);
       setActiveRefIdx(null);
       setActiveFileIndex(0);
     }, 200);
@@ -654,6 +652,62 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     }
   };
 
+  const renderLinkInputForm = () => (
+    <form
+      id="evidence-pasted-link-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleAddPastedLink();
+      }}
+      className="mt-3 rounded-xl border border-blue-200 bg-blue-50/40 p-3"
+    >
+      <label htmlFor="evidence-pasted-link" className="sr-only">
+        Dán link dòng bằng chứng
+      </label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          id="evidence-pasted-link"
+          type="text"
+          value={pastedLink}
+          onChange={(event) => {
+            setPastedLink(event.target.value);
+            if (linkError) setLinkError("");
+          }}
+          placeholder="Dán link tài liệu đã có..."
+          autoFocus
+          disabled={uploading}
+          aria-invalid={Boolean(linkError)}
+          aria-describedby={linkError ? "evidence-pasted-link-error" : undefined}
+          className="min-h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        />
+        <button
+          type="submit"
+          disabled={uploading}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <LinkIcon size={14} aria-hidden="true" />
+          Thêm link
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowLinkInput(false);
+            setPastedLink("");
+            setLinkError("");
+          }}
+          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          Hủy
+        </button>
+      </div>
+      {linkError && (
+        <p id="evidence-pasted-link-error" role="alert" className="mt-2 text-xs text-red-500">
+          {linkError}
+        </p>
+      )}
+    </form>
+  );
+
   if (isLoading) {
     return <ChecklistTableSkeleton />;
   }
@@ -829,7 +883,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                       <button 
                                         title={`Tải lên / Xem PDF${pdfCount > 0 ? ` (${pdfCount} tài liệu)` : ''}`}
                                         aria-label={`Tải lên hoặc xem PDF${pdfCount > 0 ? `, hiện có ${pdfCount} tài liệu` : ''}`}
-                                        onClick={() => openModal(group, item, "pdf", refs[idx], idx)}
+                                        onClick={() => openModal(group, item, "pdf", idx)}
                                         className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
                                           pdfUrl 
                                             ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" 
@@ -849,7 +903,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                       <button 
                                         title={`Tải lên / Xem Ảnh${imgCount > 0 ? ` (${imgCount} tài liệu)` : ''}`}
                                         aria-label={`Tải lên hoặc xem hình ảnh${imgCount > 0 ? `, hiện có ${imgCount} tài liệu` : ''}`}
-                                        onClick={() => openModal(group, item, "img", refs[idx], idx)}
+                                        onClick={() => openModal(group, item, "img", idx)}
                                         className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
                                           imgUrl 
                                             ? "bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100"
@@ -883,47 +937,44 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
       </div>
 
       {/* Modal */}
-      <AnimatePresence>
-        {modalOpen && activeItem && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {modalOpen && activeItem && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto overscroll-contain p-2 sm:p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.18, ease: "easeOut" }}
               onClick={closeModal}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-blue-100 overflow-hidden flex flex-col text-slate-800"
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="evidence-modal-title"
+              className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-blue-100 bg-white text-slate-800 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-blue-100 bg-[#E8F1FB]">
-                <h3 className="font-normal text-blue-950 text-base">
+              <div className="flex shrink-0 items-center justify-between border-b border-blue-100 bg-[#E8F1FB] px-4 py-3 sm:px-5">
+                <h3 id="evidence-modal-title" className="text-sm font-medium text-blue-950 sm:text-base">
                   {modalType === "pdf" ? "Tài liệu PDF đính kèm" : "Hình ảnh đính kèm"}
                 </h3>
-                <button 
+                <button
+                  type="button"
                   onClick={closeModal}
-                  className="p-1.5 rounded-full hover:bg-blue-100 text-slate-500 hover:text-slate-800 transition-colors"
+                  aria-label="Đóng cửa sổ bằng chứng"
+                  title="Đóng"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-blue-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <X size={18} />
+                  <X size={18} aria-hidden="true" />
                 </button>
               </div>
-              
-              <div className="p-6">
-                <div className="mb-4">
-                  <div className="text-xs text-blue-800 font-normal mb-1">Mục kiểm tra:</div>
-                  <div className="text-sm font-normal text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <div>{activeItem.orderIndex}. {activeItem.title}</div>
-                    {activeRef && (
-                      <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-slate-500 font-normal">
-                        Tài liệu: {activeRef}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
                 {/* File Input */}
                 <input 
                   type="file" 
@@ -1012,102 +1063,55 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                          </div>
                        )}
 
-                       {showLinkInput && (
-                         <form
-                           onSubmit={(event) => {
-                             event.preventDefault();
-                             handleAddPastedLink();
-                           }}
-                           className="mb-4 rounded-xl border border-blue-200 bg-blue-50/40 p-4"
-                         >
-                           <label htmlFor="evidence-pasted-link" className="mb-2 block text-sm font-normal text-blue-950">
-                             Dán link dòng bằng chứng
-                           </label>
-                           <div className="flex flex-col gap-2 sm:flex-row">
-                             <input
-                               id="evidence-pasted-link"
-                               type="text"
-                               value={pastedLink}
-                               onChange={(event) => {
-                                 setPastedLink(event.target.value);
-                                 if (linkError) setLinkError("");
-                               }}
-                               placeholder="Dán link tài liệu đã có..."
-                               autoFocus
-                               disabled={uploading}
-                               aria-invalid={Boolean(linkError)}
-                               aria-describedby={linkError ? "evidence-pasted-link-error" : undefined}
-                               className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                             />
-                             <button
-                               type="submit"
-                               disabled={uploading}
-                               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-normal text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                             >
-                               <LinkIcon size={16} />
-                               Thêm link
-                             </button>
-                             <button
-                               type="button"
-                               onClick={() => {
-                                 setShowLinkInput(false);
-                                 setPastedLink("");
-                                 setLinkError("");
-                               }}
-                               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-normal text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                             >
-                               Hủy
-                             </button>
-                           </div>
-                           {linkError && (
-                             <p id="evidence-pasted-link-error" role="alert" className="mt-2 text-xs text-red-500">
-                               {linkError}
-                             </p>
-                           )}
-                         </form>
-                       )}
-
                        {hasFiles ? (
                      <div className="flex flex-col h-full w-full animate-in fade-in zoom-in-95 duration-200">
                       
                       {fileList.length > 1 && (
                         <div className="flex items-center justify-between mb-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
                           <button
+                             type="button"
                              onClick={() => {
                                setActiveFileIndex(prev => Math.max(0, prev - 1));
                                setCopiedLink(false);
                              }}
                              disabled={activeFileIndex === 0}
-                             className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-200 disabled:opacity-40 text-slate-700 hover:text-blue-600 transition-colors"
+                             aria-label="Xem tài liệu trước"
+                             title="Tài liệu trước"
+                             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40"
                           >
-                             <ChevronLeft size={18} />
+                             <ChevronLeft size={18} aria-hidden="true" />
                           </button>
                           <span className="text-sm font-normal text-slate-700">Tài liệu {activeFileIndex + 1} / {fileList.length}</span>
                           <button
+                             type="button"
                              onClick={() => {
                                setActiveFileIndex(prev => Math.min(fileList.length - 1, prev + 1));
                                setCopiedLink(false);
                              }}
                              disabled={activeFileIndex === fileList.length - 1}
-                             className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-200 disabled:opacity-40 text-slate-700 hover:text-blue-600 transition-colors"
+                             aria-label="Xem tài liệu tiếp theo"
+                             title="Tài liệu tiếp theo"
+                             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40"
                           >
-                             <ChevronRight size={18} />
+                             <ChevronRight size={18} aria-hidden="true" />
                           </button>
                         </div>
                       )}
 
-                      <div className="relative w-full h-[300px] bg-slate-100 rounded-xl overflow-hidden border border-slate-200 mb-4 flex flex-col group">
+                      <div className="group relative mb-4 flex h-[clamp(220px,42dvh,360px)] w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                         {modalType === "pdf" ? (
                           <iframe src={currentUrl} className="w-full h-full" title="PDF Preview" />
                         ) : (
                           <img src={currentUrl} alt="Bằng chứng" className="w-full h-full object-contain" />
                         )}
-                        <button 
+                        <button
+                          type="button"
                           onClick={() => window.open(currentUrl, '_blank')}
-                          className="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white rounded-lg shadow-sm border border-slate-200 text-slate-700 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2"
+                          aria-label="Mở tài liệu trong cửa sổ mới"
                           title="Phóng to"
+                          className="absolute right-2 top-2 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white/90 text-slate-700 opacity-100 shadow-sm transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                         >
-                          <Maximize size={16} />
+                          <Maximize size={16} aria-hidden="true" />
                         </button>
                         {uploadedAt && (
                           <div className="absolute bottom-2 right-2 px-2.5 py-1 bg-slate-900/80 backdrop-blur-sm text-white text-[11px] rounded-lg flex items-center gap-1.5 shadow-sm">
@@ -1119,10 +1123,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
                       {evidenceReferenceUrl && (
                         <div className="mb-4">
-                          <label htmlFor="evidence-current-link" className="mb-2 block text-sm font-normal text-slate-700">
-                            Link dòng bằng chứng
-                          </label>
-                          <div className="flex flex-col gap-2 sm:flex-row">
+                          <div className="flex items-center gap-2">
                             <input
                               id="evidence-current-link"
                               type="text"
@@ -1130,50 +1131,60 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                               value={evidenceReferenceUrl}
                               onFocus={(event) => event.currentTarget.select()}
                               aria-label="Link dòng bằng chứng hiện tại"
-                              className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                              className="min-h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             />
                             <button
                               type="button"
                               onClick={() => void handleCopyLink(evidenceReferenceUrl)}
-                              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              aria-label={copiedLink ? "Đã sao chép link bằng chứng" : "Sao chép link bằng chứng"}
+                              title={copiedLink ? "Đã sao chép" : "Sao chép link"}
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                              {copiedLink ? "Đã sao chép" : "Sao chép link"}
+                              {copiedLink ? (
+                                <Check size={16} className="text-emerald-600" aria-hidden="true" />
+                              ) : (
+                                <Copy size={16} aria-hidden="true" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowLinkInput((visible) => !visible);
+                                setLinkError("");
+                              }}
+                              disabled={uploading}
+                              aria-label={showLinkInput ? "Ẩn ô dán link bằng chứng" : "Dán link dòng bằng chứng"}
+                              aria-expanded={showLinkInput}
+                              aria-controls="evidence-pasted-link-form"
+                              title="Dán link dòng bằng chứng"
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <ClipboardPaste size={16} aria-hidden="true" />
                             </button>
                           </div>
-                          <p className="mt-2 text-xs text-slate-500 font-normal">
-                            Link này luôn trỏ tới tài liệu hiện tại của dòng nguồn. Hãy lưu thay đổi để các dòng dùng chung nhận file mới.
-                          </p>
+                          {showLinkInput && renderLinkInputForm()}
                         </div>
                       )}
                       
-                      <div className="flex flex-wrap justify-center gap-3">
+                      <div className="flex flex-nowrap items-center justify-center gap-2">
                         <button 
                           onClick={() => !uploading && fileRef.current?.click()}
                           disabled={uploading}
-                          className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
+                          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
+                          {uploading ? (
+                            <RefreshCw size={14} className="animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Plus size={14} aria-hidden="true" />
+                          )}
                           Tải thêm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowLinkInput(true);
-                            setLinkError("");
-                          }}
-                          disabled={uploading}
-                          className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
-                        >
-                          <LinkIcon size={16} />
-                          Dán link dòng bằng chứng
                         </button>
                         <button 
                           onClick={handleRemoveFile}
-                          className="flex min-h-11 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-normal text-red-600 transition-colors hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 shadow-sm"
+                          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400"
                         >
-                          <Trash2 size={16} />
-                          Xóa tài liệu này
+                          <Trash2 size={14} aria-hidden="true" />
+                          Xóa bằng chứng
                         </button>
                       </div>
                     </div>
@@ -1210,48 +1221,49 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                               </>
                             )}
                           </div>
-                          <div className="mt-4 flex flex-wrap justify-center gap-3">
+                          <div className="mt-4 flex items-center justify-center gap-2">
                             <button
                               type="button"
                               onClick={() => !uploading && fileRef.current?.click()}
                               disabled={uploading}
-                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
+                              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
+                              {uploading ? (
+                                <RefreshCw size={14} className="animate-spin" aria-hidden="true" />
+                              ) : (
+                                <Plus size={14} aria-hidden="true" />
+                              )}
                               Tải tài liệu mới
                             </button>
                             <button
                               type="button"
                               onClick={() => {
-                                setShowLinkInput(true);
+                                setShowLinkInput((visible) => !visible);
                                 setLinkError("");
                               }}
                               disabled={uploading}
-                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
+                              aria-label={showLinkInput ? "Ẩn ô dán link bằng chứng" : "Dán link dòng bằng chứng"}
+                              aria-expanded={showLinkInput}
+                              aria-controls="evidence-pasted-link-form"
+                              title="Dán link dòng bằng chứng"
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <LinkIcon size={16} />
-                              Dán link dòng bằng chứng
+                              <ClipboardPaste size={16} aria-hidden="true" />
                             </button>
                           </div>
+                          {showLinkInput && renderLinkInputForm()}
                          </>
                        )}
                      </div>
                    );
                  })()}
               </div>
-              
-              <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end">
-                <button 
-                  onClick={closeModal}
-                  className="px-5 py-2 rounded-xl font-normal text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 transition-colors text-sm shadow-sm"
-                >
-                  Đóng
-                </button>
-              </div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </motion.div>
   );
 }
