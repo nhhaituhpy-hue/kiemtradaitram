@@ -3,12 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, User } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import AviationFlightMapBackground from "@/components/AviationFlightMapBackground";
+import AviationVaultLock from "@/components/AviationVaultLock";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -17,11 +21,12 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800)); // simulate network
+      await new Promise((resolve) => setTimeout(resolve, 600)); // simulate network
 
       if (username.trim().toUpperCase() === "TUH" && password === "12345678") {
         document.cookie = `auth_token=mock-token-${username.trim().toUpperCase()}; path=/; max-age=86400`;
-        router.push("/dashboard/tuh");
+        // Trigger the vault unlocking sequence
+        setIsUnlocking(true);
       } else {
         setError("Tài khoản hoặc mật khẩu không chính xác");
       }
@@ -32,99 +37,133 @@ export default function LoginPage() {
     }
   };
 
+  const handleVaultComplete = () => {
+    router.push("/dashboard/tuh?entrance=transformer");
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F4F3EF] p-4 relative overflow-hidden font-sans">
-      {/* Background Soft Glows */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-100/50 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-red-100/50 rounded-full blur-[80px] pointer-events-none"></div>
-      
-      {/* Texture Overlay (Optional) */}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none mix-blend-multiply"></div>
+    <div className="min-h-screen flex items-center justify-center bg-[#070D1E] p-4 relative overflow-hidden font-sans">
+      {/* Global Flight Map Background with Latitude, Longitude & Air Routes */}
+      <AviationFlightMapBackground />
 
-      <div className="w-full max-w-[420px] bg-white/70 backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white p-8 sm:p-10 relative z-10 animate-in fade-in zoom-in-95 duration-500">
-        
-        {/* Brand & Heading */}
-        <div className="flex flex-col items-center mb-8 text-center">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight flex items-center justify-center">
-              <span className="text-[#e63946] drop-shadow-sm">A</span>
-              <span className="text-blue-700 drop-shadow-sm">TTECH</span>
-            </h1>
-            <p className="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mt-1">
-              Sáng tạo và Thích nghi
-            </p>
-          </div>
-        </div>
+      {/* Atmospheric Navy & Cyan Glows */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-blue-600/15 rounded-full blur-[140px] pointer-events-none"></div>
+      <div className="absolute top-1/4 right-1/4 w-[450px] h-[450px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-indigo-600/15 rounded-full blur-[90px] pointer-events-none"></div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-600 uppercase tracking-wider block">
-              Tên đăng nhập
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
-                <User size={18} />
+      {/* Texture Overlay */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none mix-blend-overlay"></div>
+
+      {/* Main Login Card - Transparent Glassmorphism (~355px) */}
+      <AnimatePresence>
+        {!isUnlocking && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{
+              opacity: 0,
+              scale: 0.9,
+              filter: "blur(8px)",
+              transition: { duration: 0.6, ease: "easeInOut" },
+            }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="w-full max-w-[355px] bg-[#0C1836]/65 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6),0_0_30px_rgba(56,189,248,0.15)] border border-cyan-400/30 p-6 sm:p-7 relative z-10"
+          >
+            {/* Brand & Heading */}
+            <div className="flex flex-col items-center mb-4 text-center">
+              <div>
+                <h1 className="text-2xl sm:text-2xl font-black tracking-tight flex items-center justify-center">
+                  <span className="text-[#e63946] drop-shadow-[0_0_12px_rgba(230,57,70,0.5)]">A</span>
+                  <span className="text-cyan-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.5)]">TTECH</span>
+                </h1>
+                <p className="text-[10px] font-bold text-cyan-200/70 tracking-widest uppercase mt-1">
+                  Sáng tạo và Thích nghi
+                </p>
               </div>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="block w-full pl-11 pr-4 py-3 bg-white border border-[#E0DED5] rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] focus:border-[#C3CFA2] transition-all text-sm font-medium shadow-sm"
-                placeholder="Nhập tài khoản"
-                autoComplete="username"
-                required
-              />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-600 uppercase tracking-wider block">
-              Mật khẩu
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
-                <Lock size={18} />
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-5" autoComplete="off">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-cyan-200/90 uppercase tracking-wider block">
+                  Tên đăng nhập
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-cyan-400/80">
+                    <User size={17} />
+                  </div>
+                  <input
+                    type="text"
+                    name="username_tech"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="block w-full pl-10 pr-3.5 py-2.5 bg-[#060E22]/70 border border-[#254170] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm font-medium shadow-inner"
+                    placeholder="Nhập tài khoản"
+                    autoComplete="off"
+                    required
+                  />
+                </div>
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-11 pr-4 py-3 bg-white border border-[#E0DED5] rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] focus:border-[#C3CFA2] transition-all text-sm font-medium shadow-sm"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                required
-              />
-            </div>
-          </div>
 
-          {error && (
-            <div className="text-xs text-red-600 font-medium bg-red-50 border border-red-100 px-4 py-3 rounded-xl flex items-center justify-center animate-in fade-in slide-in-from-top-1">
-              {error}
-            </div>
-          )}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-cyan-200/90 uppercase tracking-wider block">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-cyan-400/80">
+                    <Lock size={17} />
+                  </div>
+                  <input
+                    type="text"
+                    name="passcode_sec"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ WebkitTextSecurity: "disc" } as React.CSSProperties}
+                    className="block w-full pl-10 pr-3.5 py-2.5 bg-[#060E22]/70 border border-[#254170] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm font-medium shadow-inner"
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    data-1p-ignore="true"
+                    data-lpignore="true"
+                    required
+                  />
+                </div>
+              </div>
 
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-sm font-bold tracking-wide rounded-xl shadow-md shadow-blue-600/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                "Đăng nhập"
+              {error && (
+                <div className="text-xs text-red-400 font-medium bg-red-950/40 border border-red-500/40 px-3.5 py-2.5 rounded-xl flex items-center justify-center animate-in fade-in slide-in-from-top-1">
+                  {error}
+                </div>
               )}
-            </button>
-          </div>
-        </form>
-        
-        <div className="mt-10 text-center">
-          <p className="text-[11px] font-medium text-zinc-500">
-            © 2026 Công ty TNHH Kỹ thuật Quản lý bay
-          </p>
-        </div>
-      </div>
+
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-[0.98] text-white text-sm font-bold tracking-wide rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase cursor-pointer"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    "Đăng nhập"
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-8 text-center">
+              <p className="text-[10px] font-medium text-slate-400/70">
+                2026 © Trung tâm Bảo đảm kỹ thuật
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 3D Aviation Vault Combination Lock & Opening Doors Animation */}
+      <AviationVaultLock
+        isTriggered={isUnlocking}
+        onUnlocked={handleVaultComplete}
+      />
     </div>
   );
 }

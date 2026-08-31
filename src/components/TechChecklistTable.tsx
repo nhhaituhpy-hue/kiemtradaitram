@@ -20,8 +20,19 @@ type UploadResponse = {
   key?: string;
 };
 
+const getInitialChecklistData = (categoryId: string): TechChecklistGroup[] => {
+  if (categoryId === "quan-ly-ky-thuat") return mockTechChecklist;
+  if (categoryId === "quan-ly-an-toan-sms") return mockSmsChecklist;
+  if (categoryId === "an-toan-ve-sinh") return mockAtvsldChecklist;
+  if (categoryId === "phong-chay-chua-chay") return mockPcccChecklist;
+  if (categoryId === "phong-chong-thien-tai") return mockPcttChecklist;
+  if (categoryId === "an-toan-thong-tin") return mockAtttChecklist;
+  if (categoryId === "bao-tri-cong-trinh") return mockBtctChecklist;
+  return mockTechChecklist;
+};
+
 export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: { categoryId?: string }) {
-  const [data, setData] = useState<TechChecklistGroup[]>([]);
+  const [data, setData] = useState<TechChecklistGroup[]>(() => getInitialChecklistData(categoryId));
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"pdf" | "img" | null>(null);
   const [activeItem, setActiveItem] = useState<any>(null);
@@ -70,53 +81,54 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const storageKey = `checklistData-${categoryId}`;
 
   useEffect(() => {
+    const fallbackData = getInitialChecklistData(categoryId);
+    setData(fallbackData);
+
     const fetchTemplateAndData = async () => {
+      let initialData: TechChecklistGroup[] = fallbackData;
       try {
         // 1. Lấy cấu trúc form (Template) từ DB do Admin định nghĩa
         const tplRes = await fetch(`/api/templates/load?categoryId=${categoryId}`);
-        const tplResult = await tplRes.json();
-        
-        let initialData: TechChecklistGroup[] = [];
-        if (tplResult.data && tplResult.data.length > 0) {
-          initialData = tplResult.data;
-        } else {
-          // Fallback về file cứng nếu DB chưa có template
-          if (categoryId === "quan-ly-ky-thuat") initialData = [...mockTechChecklist];
-          else if (categoryId === "quan-ly-an-toan-sms") initialData = [...mockSmsChecklist];
-          else if (categoryId === "an-toan-ve-sinh") initialData = [...mockAtvsldChecklist];
-          else if (categoryId === "phong-chay-chua-chay") initialData = [...mockPcccChecklist];
-          else if (categoryId === "phong-chong-thien-tai") initialData = [...mockPcttChecklist];
-          else if (categoryId === "an-toan-thong-tin") initialData = [...mockAtttChecklist];
-          else if (categoryId === "bao-tri-cong-trinh") initialData = [...mockBtctChecklist];
-        }
-
-        // 2. Lấy dữ liệu đánh giá thực tế (Có/Không, Ảnh...) từ DB
-        const dataRes = await fetch(`/api/inspections/load?categoryId=${categoryId}&unitParam=${unitParam || ''}`);
-        const dataResult = await dataRes.json();
-
-        if (dataResult.data && dataResult.data.length > 0) {
-          const newData = JSON.parse(JSON.stringify(initialData)); // Deep clone
-          dataResult.data.forEach((dbItem: any) => {
-            for (const group of newData) {
-              const itemIndex = group.items.findIndex((i: any) => i.id === dbItem.checklistItemId);
-              if (itemIndex !== -1) {
-                const item = group.items[itemIndex];
-                if (dbItem.status) item.status = dbItem.status;
-                if (dbItem.note) item.note = dbItem.note;
-                if (dbItem.reference) item.reference = dbItem.reference;
-                if (dbItem.evidencePdf) item.evidencePdfs = dbItem.evidencePdf;
-                if (dbItem.evidenceImg) item.evidenceImgs = dbItem.evidenceImg;
-                break;
-              }
-            }
-          });
-          setData(newData);
-        } else {
-          setData(initialData);
+        if (tplRes.ok) {
+          const tplResult = await tplRes.json();
+          if (tplResult.data && tplResult.data.length > 0) {
+            initialData = tplResult.data;
+          }
         }
       } catch (err) {
-        console.error("Lỗi khi load dữ liệu", err);
+        console.warn("Dùng template mặc định:", err);
       }
+
+      try {
+        // 2. Lấy dữ liệu đánh giá thực tế (Có/Không, Ảnh...) từ DB
+        const dataRes = await fetch(`/api/inspections/load?categoryId=${categoryId}&unitParam=${unitParam || ''}`);
+        if (dataRes.ok) {
+          const dataResult = await dataRes.json();
+          if (dataResult.data && dataResult.data.length > 0) {
+            const newData = JSON.parse(JSON.stringify(initialData)); // Deep clone
+            dataResult.data.forEach((dbItem: any) => {
+              for (const group of newData) {
+                const itemIndex = group.items.findIndex((i: any) => i.id === dbItem.checklistItemId);
+                if (itemIndex !== -1) {
+                  const item = group.items[itemIndex];
+                  if (dbItem.status) item.status = dbItem.status;
+                  if (dbItem.note) item.note = dbItem.note;
+                  if (dbItem.reference) item.reference = dbItem.reference;
+                  if (dbItem.evidencePdf) item.evidencePdfs = dbItem.evidencePdf;
+                  if (dbItem.evidenceImg) item.evidenceImgs = dbItem.evidenceImg;
+                  break;
+                }
+              }
+            });
+            setData(newData);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Dùng dữ liệu mặc định:", err);
+      }
+
+      setData(initialData);
     };
     
     fetchTemplateAndData();
@@ -420,9 +432,9 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
               value={opt} 
               checked={currentStatus === opt}
               onChange={() => handleStatusChange(group.id, item.id, refIdx, opt)}
-              className="w-4 h-4 text-[#8a9a5b] bg-[#F4F3EF] border-[#E0DED5] focus:ring-[#C3CFA2] focus:ring-2 cursor-pointer shrink-0"
+              className="w-4 h-4 text-blue-600 bg-white border-slate-300 focus:ring-blue-500 focus:ring-2 cursor-pointer shrink-0"
             />
-            <span className="text-sm text-zinc-700 group-hover:text-zinc-900">{opt}</span>
+            <span className="text-sm text-slate-700 font-normal group-hover:text-blue-700 transition-colors">{opt}</span>
           </label>
         ))}
       </div>
@@ -635,53 +647,53 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <button 
           onClick={() => router.push(`/dashboard/${unitParam}`)}
-          className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 transition-colors font-medium"
+          className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-blue-600 font-medium px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200/90 shadow-sm transition-all duration-200 cursor-pointer"
         >
-          <ArrowLeft size={20} />
-          Quay lại bảng điều khiển
+          <ArrowLeft size={14} className="text-slate-500" />
+          <span>Quay lại bảng điều khiển</span>
         </button>
         <button 
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center gap-2 bg-[#C3CFA2] hover:bg-[#B3C092] text-zinc-900 px-5 py-2.5 rounded-lg font-semibold transition-colors shadow-sm disabled:opacity-70"
+          className="flex items-center gap-1.5 text-xs font-medium text-white px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 transition-all duration-200 shadow-sm shadow-blue-500/20 disabled:opacity-60 cursor-pointer"
         >
           {isSaving ? (
-             <div className="w-5 h-5 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
+             <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : saveSuccess ? (
-             <Check size={18} className="text-emerald-700" />
+             <Check size={14} className="text-emerald-200" />
           ) : (
-             <Save size={18} />
+             <Save size={14} />
           )}
-          {isSaving ? "Đang lưu..." : saveSuccess ? "Đã lưu thành công" : "Lưu thay đổi"}
+          <span>{isSaving ? "Đang lưu..." : saveSuccess ? "Đã lưu thành công" : "Lưu thay đổi"}</span>
         </button>
       </div>
 
-      <div className="bg-white border border-[#E0DED5] rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-blue-200/80 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.05)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
-              <tr className="border-b border-[#E0DED5] bg-[#F9F8F6]">
-                <th className="px-4 py-4 text-sm font-semibold text-zinc-600 w-16 text-center">TT</th>
-                <th className="px-4 py-4 text-sm font-semibold text-zinc-600 w-64">Nội dung, yêu cầu</th>
-                <th className="px-4 py-4 text-sm font-semibold text-zinc-600 w-32">{categoryId === "an-toan-thong-tin" ? "Mức độ tuân thủ" : (categoryId === "bao-tri-cong-trinh" ? "Tình trạng" : "Hiện trạng")}</th>
+              <tr className="border-b border-blue-200 bg-[#E3EFFB]">
+                <th className="px-4 py-3.5 text-sm font-normal text-blue-900 w-16 text-center">TT</th>
+                <th className="px-4 py-3.5 text-sm font-normal text-blue-900 w-64">Nội dung, yêu cầu</th>
+                <th className="px-4 py-3.5 text-sm font-normal text-blue-900 w-32">{categoryId === "an-toan-thong-tin" ? "Mức độ tuân thủ" : (categoryId === "bao-tri-cong-trinh" ? "Tình trạng" : "Hiện trạng")}</th>
                 {categoryId !== "an-toan-thong-tin" && categoryId !== "bao-tri-cong-trinh" && (
-                  <th className="px-4 py-4 text-sm font-semibold text-zinc-600 w-64">Tài liệu tham chiếu</th>
+                  <th className="px-4 py-3.5 text-sm font-normal text-blue-900 w-64">Tài liệu tham chiếu</th>
                 )}
-                <th className={`px-4 py-4 text-sm font-semibold text-zinc-600 ${(categoryId === "an-toan-thong-tin" || categoryId === "bao-tri-cong-trinh") ? "w-[28rem]" : "w-48"}`}>Ghi chú</th>
-                <th className="px-4 py-4 text-sm font-semibold text-zinc-600 w-24 text-center">Bằng chứng</th>
+                <th className={`px-4 py-3.5 text-sm font-normal text-blue-900 ${(categoryId === "an-toan-thong-tin" || categoryId === "bao-tri-cong-trinh") ? "w-[28rem]" : "w-48"}`}>Ghi chú</th>
+                <th className="px-4 py-3.5 text-sm font-normal text-blue-900 w-24 text-center">Bằng chứng</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E0DED5]">
+            <tbody className="divide-y divide-slate-200/70">
               {data.map((group) => (
                 <React.Fragment key={group.id}>
-                  {/* Main Category Row */}
+                  {/* Main Category Row - font-normal, NOT BOLD */}
                   {group.title && (
-                    <tr className="bg-[#EBE9E1]/50">
-                      <td className="px-4 py-3 font-bold text-zinc-800 text-center border-r border-[#E0DED5]/30">{group.order}</td>
-                      <td colSpan={5} className="px-4 py-3 font-bold text-zinc-800">
+                    <tr className="bg-[#EDF5FD] border-b border-blue-200/80">
+                      <td className="px-4 py-3 font-normal text-blue-900 text-center border-r border-blue-200/60">{group.order}</td>
+                      <td colSpan={5} className="px-4 py-3 font-normal text-blue-950 text-[15px]">
                         {group.title}
                       </td>
                     </tr>
@@ -695,42 +707,42 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                     return (
                       <React.Fragment key={item.id}>
                         {Array.from({ length: numRows }).map((_, idx) => (
-                          <tr key={`${item.id}-${idx}`} className="group border-b border-[#E0DED5] last:border-0">
+                          <tr key={`${item.id}-${idx}`} className="group border-b border-slate-200/70 last:border-0 hover:bg-sky-50/50 transition-colors">
                             {idx === 0 && (
                               <>
-                                <td rowSpan={numRows} className="px-4 py-3 text-sm text-zinc-500 font-medium text-center align-top pt-4 border-r border-[#E0DED5]/30">
+                                <td rowSpan={numRows} className="px-4 py-3 text-sm text-blue-700 font-normal text-center align-top pt-4 border-r border-slate-200/70">
                                   {item.orderIndex}
                                 </td>
-                                <td rowSpan={numRows} className="px-4 py-3 text-sm text-zinc-800 align-top pt-4 border-r border-[#E0DED5]/30">
-                                  <div className="font-medium mb-1 whitespace-pre-wrap leading-relaxed">{item.title}</div>
+                                <td rowSpan={numRows} className="px-4 py-3 text-sm text-slate-800 font-normal align-top pt-4 border-r border-slate-200/70">
+                                  <div className="font-normal mb-1 whitespace-pre-wrap leading-relaxed">{item.title}</div>
                                 </td>
                               </>
                             )}
                             
-                            <td className="px-4 py-3 align-top pt-4 border-r border-[#E0DED5]/30">
+                            <td className="px-4 py-3 align-top pt-4 border-r border-slate-200/70">
                               {renderStatusRadios(group, item, idx)}
                             </td>
                             
                             {categoryId !== "an-toan-thong-tin" && categoryId !== "bao-tri-cong-trinh" && (
-                              <td className="px-4 py-3 text-xs text-zinc-600 align-top group/ref relative min-w-[200px] border-l border-[#E0DED5]/30">
+                              <td className="px-4 py-3 text-xs text-slate-600 font-normal align-top group/ref relative min-w-[200px] border-l border-slate-200/70">
                                 {editingRef?.id === item.id && editingRef?.idx === idx ? (
                                   <div className="flex flex-col gap-2">
                                     <textarea
                                       autoFocus
                                       value={editingRef.value}
                                       onChange={(e) => setEditingRef({ ...editingRef, value: e.target.value })}
-                                      className="w-full bg-white border border-[#C3CFA2] rounded p-2 focus:outline-none focus:ring-1 focus:ring-[#C3CFA2] min-h-[60px] resize-y text-xs text-zinc-800"
+                                      className="w-full bg-white border border-blue-300 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[60px] resize-y text-xs text-slate-800 font-normal"
                                     />
                                     <div className="flex justify-end gap-2">
                                       <button 
                                         onClick={() => setEditingRef(null)}
-                                        className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-800 px-2 py-1.5 transition-colors"
+                                        className="text-[11px] font-normal text-slate-500 hover:text-slate-700 px-2 py-1.5 transition-colors"
                                       >
                                         Hủy
                                       </button>
                                       <button 
                                         onClick={() => saveReferenceLine(group.id, item.id, idx)}
-                                        className="text-[11px] font-semibold bg-[#C3CFA2] text-zinc-900 px-3 py-1.5 rounded hover:bg-[#B3C092] transition-colors"
+                                        className="text-[11px] font-normal bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
                                       >
                                         Lưu
                                       </button>
@@ -741,7 +753,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                     {refs[idx] || item.reference}
                                     <button 
                                       onClick={() => setEditingRef({ id: item.id, idx, value: refs[idx] || item.reference })}
-                                      className="absolute bottom-2 right-2 p-1.5 text-zinc-400 hover:text-[#7A8A4B] hover:bg-[#EBE9E1] rounded opacity-0 group-hover/ref:opacity-100 transition-all"
+                                      className="absolute bottom-2 right-2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover/ref:opacity-100 transition-all"
                                       title="Chỉnh sửa tài liệu"
                                     >
                                       <Pen size={14} />
@@ -752,19 +764,19 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                             )}
                             
                             {idx === 0 && (
-                              <td rowSpan={numRows} className={`px-4 py-3 text-xs text-zinc-600 align-top border-l border-[#E0DED5]/30 group/note relative ${(categoryId === "an-toan-thong-tin" || categoryId === "bao-tri-cong-trinh") ? "min-w-[400px]" : "min-w-[200px]"}`}>
+                              <td rowSpan={numRows} className={`px-4 py-3 text-xs text-slate-600 font-normal align-top border-l border-slate-200/70 group/note relative ${(categoryId === "an-toan-thong-tin" || categoryId === "bao-tri-cong-trinh") ? "min-w-[400px]" : "min-w-[200px]"}`}>
                                 {editingNoteId === item.id ? (
                                   <div className="flex flex-col gap-2">
                                     <textarea
                                       autoFocus
                                       value={item.note || ""}
                                       onChange={(e) => handleNoteChange(group.id, item.id, e.target.value)}
-                                      className="w-full bg-white border border-[#C3CFA2] rounded p-2 focus:outline-none focus:ring-1 focus:ring-[#C3CFA2] min-h-[80px] resize-y text-xs text-zinc-800"
+                                      className="w-full bg-white border border-blue-300 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[80px] resize-y text-xs text-slate-800 font-normal"
                                     />
                                     <div className="flex justify-end">
                                       <button 
                                         onClick={() => setEditingNoteId(null)}
-                                        className="text-[11px] font-semibold bg-[#C3CFA2] text-zinc-900 px-3 py-1.5 rounded hover:bg-[#B3C092] transition-colors"
+                                        className="text-[11px] font-normal bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
                                       >
                                         Lưu ghi chú
                                       </button>
@@ -772,10 +784,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                   </div>
                                 ) : (
                                   <div className="whitespace-pre-wrap leading-relaxed min-h-[40px] pb-6">
-                                    {item.note || <span className="text-zinc-400 italic">Chưa có ghi chú...</span>}
+                                    {item.note || <span className="text-slate-400 italic">Chưa có ghi chú...</span>}
                                     <button 
                                       onClick={() => setEditingNoteId(item.id)}
-                                      className="absolute bottom-2 right-2 p-1.5 text-zinc-400 hover:text-[#7A8A4B] hover:bg-[#EBE9E1] rounded opacity-0 group-hover/note:opacity-100 transition-all"
+                                      className="absolute bottom-2 right-2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover/note:opacity-100 transition-all"
                                       title="Chỉnh sửa ghi chú"
                                     >
                                       <Pen size={14} />
@@ -794,7 +806,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                 const imgCount = getEvidenceCount(imgData);
 
                                 return (
-                                  <td className="px-4 py-2 text-center align-top border-l border-[#E0DED5]/30">
+                                  <td className="px-4 py-2 text-center align-top border-l border-slate-200/70">
                                     <div className="flex items-center justify-center gap-2 mt-1">
                                       <button 
                                         title={`Tải lên / Xem PDF${pdfCount > 0 ? ` (${pdfCount} tài liệu)` : ''}`}
@@ -803,7 +815,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                         className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
                                           pdfUrl 
                                             ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" 
-                                            : "bg-[#F4F3EF] text-red-500 hover:bg-[#E0DED5] border-transparent hover:border-[#D6D4CB]"
+                                            : "bg-slate-50 text-red-500 hover:bg-red-50 border-slate-200"
                                         }`}
                                       >
                                         <FileText size={16} />
@@ -822,15 +834,15 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                         onClick={() => openModal(group, item, "img", refs[idx], idx)}
                                         className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
                                           imgUrl 
-                                            ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100" 
-                                            : "bg-[#F4F3EF] text-blue-500 hover:bg-[#E0DED5] border-transparent hover:border-[#D6D4CB]"
+                                            ? "bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100"
+                                            : "bg-slate-50 text-sky-600 hover:bg-sky-50 border-slate-200"
                                         }`}
                                       >
                                         <ImageIcon size={16} />
                                         {imgCount > 0 && (
                                           <span
                                             aria-hidden="true"
-                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-sky-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
                                           >
                                             {imgCount > 99 ? '99+' : imgCount}
                                           </span>
@@ -861,21 +873,21 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeModal}
-              className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-[#E0DED5] overflow-hidden flex flex-col"
+              className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-blue-100 overflow-hidden flex flex-col text-slate-800"
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E0DED5] bg-[#F9F8F6]">
-                <h3 className="font-semibold text-zinc-800">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-blue-100 bg-[#E8F1FB]">
+                <h3 className="font-normal text-blue-950 text-base">
                   {modalType === "pdf" ? "Tài liệu PDF đính kèm" : "Hình ảnh đính kèm"}
                 </h3>
                 <button 
                   onClick={closeModal}
-                  className="p-1.5 rounded-full hover:bg-[#E0DED5] text-zinc-500 transition-colors"
+                  className="p-1.5 rounded-full hover:bg-blue-100 text-slate-500 hover:text-slate-800 transition-colors"
                 >
                   <X size={18} />
                 </button>
@@ -883,11 +895,11 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
               
               <div className="p-6">
                 <div className="mb-4">
-                  <div className="text-xs text-zinc-500 font-medium mb-1">Mục kiểm tra:</div>
-                  <div className="text-sm font-medium text-zinc-800 bg-[#F4F3EF] p-3 rounded-lg border border-[#E0DED5]">
+                  <div className="text-xs text-blue-800 font-normal mb-1">Mục kiểm tra:</div>
+                  <div className="text-sm font-normal text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <div>{activeItem.orderIndex}. {activeItem.title}</div>
                     {activeRef && (
-                      <div className="mt-2 pt-2 border-t border-[#E0DED5] text-xs text-zinc-600 font-normal">
+                      <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-slate-500 font-normal">
                         Tài liệu: {activeRef}
                       </div>
                     )}
@@ -943,10 +955,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                      <div>
                        {uploading && (
                          <div
-                           className="mb-4 rounded-lg border border-[#D6D4CB] bg-[#F9F8F6] p-4"
+                           className="mb-4 rounded-xl border border-blue-200 bg-blue-50/60 p-4"
                          >
                            <div className="flex items-center justify-between gap-3 text-sm">
-                             <span className="font-medium text-zinc-700" role="status" aria-live="polite">
+                             <span className="font-normal text-blue-900" role="status" aria-live="polite">
                                {uploadPhase === "preparing"
                                  ? "Đang chuẩn bị tài liệu..."
                                  : uploadPhase === "saving"
@@ -955,10 +967,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                      ? "Tải lên hoàn tất"
                                     : "Đang truyền tài liệu..."}
                              </span>
-                             <span className="font-semibold text-zinc-800">{uploadProgress}%</span>
+                             <span className="font-medium text-blue-700">{uploadProgress}%</span>
                            </div>
                            <div
-                             className="mt-3 h-2 overflow-hidden rounded-full bg-[#E0DED5]"
+                             className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100"
                              role="progressbar"
                              aria-label="Tiến trình tải file lên CSDL"
                              aria-valuemin={0}
@@ -966,11 +978,11 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                              aria-valuenow={uploadProgress}
                            >
                              <div
-                               className="h-full rounded-full bg-[#7C8A5B]"
+                               className="h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-500"
                                style={{ width: `${uploadProgress}%` }}
                              />
                            </div>
-                            <div className="mt-2 text-xs text-zinc-500">
+                            <div className="mt-2 text-xs text-slate-500 font-normal">
                               {uploadPhase === "preparing"
                                 ? "Đang tạo yêu cầu tải lên..."
                                 : uploadPhase === "saving"
@@ -988,9 +1000,9 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                              event.preventDefault();
                              handleAddPastedLink();
                            }}
-                           className="mb-4 rounded-lg border border-[#D6D4CB] bg-[#F9F8F6] p-4"
+                           className="mb-4 rounded-xl border border-blue-200 bg-blue-50/40 p-4"
                          >
-                           <label htmlFor="evidence-pasted-link" className="mb-2 block text-sm font-medium text-zinc-700">
+                           <label htmlFor="evidence-pasted-link" className="mb-2 block text-sm font-normal text-blue-950">
                              Dán link dòng bằng chứng
                            </label>
                            <div className="flex flex-col gap-2 sm:flex-row">
@@ -1007,12 +1019,12 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                disabled={uploading}
                                aria-invalid={Boolean(linkError)}
                                aria-describedby={linkError ? "evidence-pasted-link-error" : undefined}
-                               className="min-h-11 min-w-0 flex-1 rounded-lg border border-[#D6D4CB] bg-white px-3 text-sm text-zinc-700 outline-none transition-colors placeholder:text-zinc-400 focus:border-[#A8B682] focus:ring-2 focus:ring-[#C3CFA2]"
+                               className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                              />
                              <button
                                type="submit"
                                disabled={uploading}
-                               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#7C8A5B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#68764B] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:cursor-not-allowed disabled:opacity-60"
+                               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-normal text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                              >
                                <LinkIcon size={16} />
                                Thêm link
@@ -1024,13 +1036,13 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                  setPastedLink("");
                                  setLinkError("");
                                }}
-                               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#D6D4CB] bg-white px-4 text-sm font-medium text-zinc-600 transition-colors hover:bg-[#F4F3EF] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2]"
+                               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-normal text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
                              >
                                Hủy
                              </button>
                            </div>
                            {linkError && (
-                             <p id="evidence-pasted-link-error" role="alert" className="mt-2 text-xs text-red-600">
+                             <p id="evidence-pasted-link-error" role="alert" className="mt-2 text-xs text-red-500">
                                {linkError}
                              </p>
                            )}
@@ -1041,32 +1053,32 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                      <div className="flex flex-col h-full w-full animate-in fade-in zoom-in-95 duration-200">
                       
                       {fileList.length > 1 && (
-                        <div className="flex items-center justify-between mb-3 bg-[#F4F3EF] p-2 rounded-lg border border-[#E0DED5]">
+                        <div className="flex items-center justify-between mb-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
                           <button
                              onClick={() => {
                                setActiveFileIndex(prev => Math.max(0, prev - 1));
                                setCopiedLink(false);
                              }}
                              disabled={activeFileIndex === 0}
-                             className="p-1.5 rounded bg-white shadow-sm border border-[#E0DED5] disabled:opacity-50 text-zinc-600 hover:text-zinc-900 transition-colors"
+                             className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-200 disabled:opacity-40 text-slate-700 hover:text-blue-600 transition-colors"
                           >
                              <ChevronLeft size={18} />
                           </button>
-                          <span className="text-sm font-semibold text-zinc-700">Tài liệu {activeFileIndex + 1} / {fileList.length}</span>
+                          <span className="text-sm font-normal text-slate-700">Tài liệu {activeFileIndex + 1} / {fileList.length}</span>
                           <button
                              onClick={() => {
                                setActiveFileIndex(prev => Math.min(fileList.length - 1, prev + 1));
                                setCopiedLink(false);
                              }}
                              disabled={activeFileIndex === fileList.length - 1}
-                             className="p-1.5 rounded bg-white shadow-sm border border-[#E0DED5] disabled:opacity-50 text-zinc-600 hover:text-zinc-900 transition-colors"
+                             className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-200 disabled:opacity-40 text-slate-700 hover:text-blue-600 transition-colors"
                           >
                              <ChevronRight size={18} />
                           </button>
                         </div>
                       )}
 
-                      <div className="relative w-full h-[300px] bg-zinc-100 rounded-lg overflow-hidden border border-[#E0DED5] mb-4 flex flex-col group">
+                      <div className="relative w-full h-[300px] bg-slate-100 rounded-xl overflow-hidden border border-slate-200 mb-4 flex flex-col group">
                         {modalType === "pdf" ? (
                           <iframe src={currentUrl} className="w-full h-full" title="PDF Preview" />
                         ) : (
@@ -1074,14 +1086,14 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                         )}
                         <button 
                           onClick={() => window.open(currentUrl, '_blank')}
-                          className="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white rounded-lg shadow-sm border border-black/10 text-zinc-700 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2"
+                          className="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white rounded-lg shadow-sm border border-slate-200 text-slate-700 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2"
                           title="Phóng to"
                         >
                           <Maximize size={16} />
                         </button>
                         {uploadedAt && (
-                          <div className="absolute bottom-2 right-2 px-2.5 py-1 bg-black/60 backdrop-blur-sm text-white text-[11px] rounded flex items-center gap-1.5 shadow-sm">
-                            <Check size={12} className="text-[#C3CFA2]" />
+                          <div className="absolute bottom-2 right-2 px-2.5 py-1 bg-slate-900/80 backdrop-blur-sm text-white text-[11px] rounded-lg flex items-center gap-1.5 shadow-sm">
+                            <Check size={12} className="text-emerald-400" />
                             {currentFileIsLink ? "Đã liên kết lúc:" : "Đã tải lên lúc:"} {uploadedAt}
                           </div>
                         )}
@@ -1089,7 +1101,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
                       {evidenceReferenceUrl && (
                         <div className="mb-4">
-                          <label htmlFor="evidence-current-link" className="mb-2 block text-sm font-medium text-zinc-700">
+                          <label htmlFor="evidence-current-link" className="mb-2 block text-sm font-normal text-slate-700">
                             Link dòng bằng chứng
                           </label>
                           <div className="flex flex-col gap-2 sm:flex-row">
@@ -1100,18 +1112,18 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                               value={evidenceReferenceUrl}
                               onFocus={(event) => event.currentTarget.select()}
                               aria-label="Link dòng bằng chứng hiện tại"
-                              className="min-h-11 min-w-0 flex-1 rounded-lg border border-[#D6D4CB] bg-[#F9F8F6] px-3 text-sm text-zinc-600 outline-none focus:border-[#A8B682] focus:ring-2 focus:ring-[#C3CFA2]"
+                              className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             />
                             <button
                               type="button"
                               onClick={() => void handleCopyLink(evidenceReferenceUrl)}
-                              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#D6D4CB] bg-white px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#F4F3EF] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2]"
+                              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              {copiedLink ? <Check size={16} className="text-[#7C8A5B]" /> : <Copy size={16} />}
+                              {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
                               {copiedLink ? "Đã sao chép" : "Sao chép link"}
                             </button>
                           </div>
-                          <p className="mt-2 text-xs text-zinc-500">
+                          <p className="mt-2 text-xs text-slate-500 font-normal">
                             Link này luôn trỏ tới tài liệu hiện tại của dòng nguồn. Hãy lưu thay đổi để các dòng dùng chung nhận file mới.
                           </p>
                         </div>
@@ -1121,7 +1133,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                         <button 
                           onClick={() => !uploading && fileRef.current?.click()}
                           disabled={uploading}
-                          className="flex min-h-11 items-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
+                          className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
                         >
                           {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
                           Tải thêm
@@ -1133,14 +1145,14 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                             setLinkError("");
                           }}
                           disabled={uploading}
-                          className="flex min-h-11 items-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
+                          className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
                         >
                           <LinkIcon size={16} />
                           Dán link dòng bằng chứng
                         </button>
                         <button 
                           onClick={handleRemoveFile}
-                          className="flex min-h-11 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-200"
+                          className="flex min-h-11 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-normal text-red-600 transition-colors hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 shadow-sm"
                         >
                           <Trash2 size={16} />
                           Xóa tài liệu này
@@ -1151,30 +1163,30 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                          <>
                            <div
                             onClick={() => !uploading && fileRef.current?.click()}
-                            className={`border-2 border-dashed border-[#D6D4CB] rounded-xl p-8 flex flex-col items-center justify-center text-center bg-[#F9F8F6] transition-colors ${uploading ? 'opacity-60 cursor-wait' : 'hover:bg-[#F4F3EF] cursor-pointer group'}`}
+                            className={`border-2 border-dashed border-blue-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-blue-50/40 transition-colors ${uploading ? 'opacity-60 cursor-wait' : 'hover:bg-blue-50/80 cursor-pointer group'}`}
                           >
                             {uploading ? (
                               <>
-                                <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 animate-spin">
-                                  <RefreshCw className="text-zinc-500" size={24} />
+                                <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-blue-200 flex items-center justify-center mb-3 animate-spin">
+                                  <RefreshCw className="text-blue-600" size={24} />
                                 </div>
-                                <p className="text-sm font-medium text-zinc-700">
+                                <p className="text-sm font-normal text-blue-900">
                                   Đang tải lên CSDL...
                                 </p>
                               </>
                             ) : (
                               <>
-                                <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-[#E0DED5] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-blue-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                   {modalType === "pdf" ? (
                                     <FileText className="text-red-500" size={24} />
                                   ) : (
-                                    <ImageIcon className="text-blue-500" size={24} />
+                                    <ImageIcon className="text-sky-500" size={24} />
                                   )}
                                 </div>
-                                <p className="text-sm font-medium text-zinc-700">
+                                <p className="text-sm font-normal text-slate-800">
                                   Nhấn để tải lên {modalType === "pdf" ? "file PDF" : "hình ảnh"}
                                 </p>
-                                <p className="text-xs text-zinc-500 mt-1">
+                                <p className="text-xs text-slate-500 font-normal mt-1">
                                   File sẽ được lưu trữ trên hệ thống CSDL
                                 </p>
                               </>
@@ -1185,7 +1197,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                               type="button"
                               onClick={() => !uploading && fileRef.current?.click()}
                               disabled={uploading}
-                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
+                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
                             >
                               {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
                               Tải tài liệu mới
@@ -1197,7 +1209,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                 setLinkError("");
                               }}
                               disabled={uploading}
-                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#D6D4CB] bg-[#F4F3EF] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-[#E0DED5] focus:outline-none focus:ring-2 focus:ring-[#C3CFA2] disabled:opacity-60"
+                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 shadow-sm"
                             >
                               <LinkIcon size={16} />
                               Dán link dòng bằng chứng
@@ -1210,10 +1222,10 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                  })()}
               </div>
               
-              <div className="px-6 py-4 border-t border-[#E0DED5] bg-[#F9F8F6] flex justify-end">
+              <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end">
                 <button 
                   onClick={closeModal}
-                  className="px-4 py-2 rounded-lg font-medium text-zinc-600 hover:bg-[#E0DED5] transition-colors text-sm"
+                  className="px-5 py-2 rounded-xl font-normal text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 transition-colors text-sm shadow-sm"
                 >
                   Đóng
                 </button>

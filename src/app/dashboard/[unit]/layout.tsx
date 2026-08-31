@@ -2,6 +2,7 @@
 
 import { LogOut, Settings } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
+import AviationFlightMapBackground from "@/components/AviationFlightMapBackground";
 
 export default function DashboardLayout({
   children,
@@ -17,10 +18,10 @@ export default function DashboardLayout({
     tsn: "Đài DVOR/DME Tân Sơn Nhất",
     // other units can be added here
   };
-  
-  // Need to unwrap params in Next.js 15+ if needed, but in 14 it's fine.
-  // We'll safely get unit string using useParams.
+
   const unitParam = params?.unit as string;
+  const categoryParam = params?.category as string;
+  const isChecklistPage = Boolean(categoryParam);
   const unitCode = unitParam?.toLowerCase() || "tuh";
   const unitName = unitNames[unitCode] || `Đài DVOR/DME ${unitCode.toUpperCase()}`;
 
@@ -30,33 +31,37 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#F4F3EF] text-zinc-900 font-sans overflow-hidden">
-      {/* Header */}
-      <header className="h-16 border-b border-[#E0DED5] bg-[#F4F3EF]/90 backdrop-blur-md flex items-center justify-between px-6 z-50 absolute top-0 w-full">
+    <div className={`h-screen flex flex-col ${isChecklistPage ? "bg-[#F0F5FA]" : "bg-[#070D1E]"} text-slate-800 font-sans overflow-hidden relative`}>
+      {/* Global Flight Map Background only for main Dashboard, not for Checklist */}
+      {!isChecklistPage && <AviationFlightMapBackground />}
+
+      {/* Header with Dark Navy Glassmorphism */}
+      <header className="h-16 border-b border-blue-900/40 bg-[#070D1E]/85 backdrop-blur-xl flex items-center justify-between px-6 z-50 absolute top-0 w-full shadow-lg shadow-black/20">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold tracking-tight drop-shadow-sm">
-            <span className="text-red-600">A</span>
-            <span className="text-blue-700">TTECH</span>
+          <h1 className="text-lg font-black tracking-tight drop-shadow-md flex items-center">
+            <span className="text-[#e63946] drop-shadow">A</span>
+            <span className="text-blue-400 drop-shadow">TTECH</span>
           </h1>
-          <span className="hidden sm:inline-block ml-3 text-sm font-medium text-zinc-600">
-            Công ty TNHH Kỹ thuật Quản lý bay
+          <span className="hidden sm:inline-block ml-3 text-xs font-semibold text-blue-200/80 uppercase tracking-wider border-l border-blue-800/60 pl-3">
+            Trung tâm Bảo đảm kỹ thuật
           </span>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="text-sm font-medium px-4 py-1.5 rounded-full bg-white border border-[#E0DED5] text-zinc-800 shadow-sm">
-            {unitName}
+
+        <div className="flex items-center gap-3">
+          <div className="text-xs font-mono font-medium text-cyan-300 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{unitName}</span>
           </div>
-          <button 
+          <button
             onClick={() => router.push('/admin/templates')}
-            className="p-2 rounded-full hover:bg-[#E0DED5] transition-colors text-zinc-500 hover:text-zinc-900"
+            className="p-2 rounded-full hover:bg-blue-900/40 text-blue-300 hover:text-white transition-all border border-transparent hover:border-blue-700/40 cursor-pointer"
             title="Quản trị hệ thống"
           >
             <Settings size={18} />
           </button>
-          <button 
+          <button
             onClick={handleLogout}
-            className="p-2 rounded-full hover:bg-[#E0DED5] transition-colors text-zinc-500 hover:text-zinc-900"
+            className="p-2 rounded-full hover:bg-red-950/40 text-blue-300 hover:text-red-400 transition-all border border-transparent hover:border-red-800/40 cursor-pointer"
             title="Đăng xuất"
           >
             <LogOut size={18} />
@@ -65,7 +70,7 @@ export default function DashboardLayout({
       </header>
 
       {/* Main Content Area */}
-      <main className="h-[calc(100vh-4rem)] w-full relative mt-16 overflow-hidden">
+      <main className="h-[calc(100vh-4rem)] w-full relative mt-16 overflow-hidden z-10">
         {children}
       </main>
     </div>
