@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, ViewTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { CategoryData, defaultCategories } from "@/data/categories";
@@ -47,7 +48,6 @@ export const NETWORK_DISPLAY_CONFIG = {
 };
 
 export default function DashboardPage() {
-  const router = useRouter();
   const params = useParams();
   const unitParam = (params?.unit as string) || "tuh";
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -65,10 +65,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const handleOpenCategory = (categoryId: string) => {
-    router.push(`/dashboard/${unitParam}/${categoryId}`);
-  };
-
   // Lấy danh sách 7 thẻ kèm vị trí thẻ
   const cardNodes = categories.slice(0, 7).map((category, index) => {
     const pos = FIELD_CARD_POSITIONS[category.id] || { x: 0, y: 0, label: category.title };
@@ -84,6 +80,11 @@ export default function DashboardPage() {
   const sevenGonSvgPath = SEVEN_GON_LINE_POINTS.map((pt) => `${pt.x},${pt.y}`).join(" L ");
 
   return (
+    <ViewTransition
+      enter={{ "checklist-navigation": "checklist-page-fade", default: "none" }}
+      exit={{ "checklist-navigation": "checklist-page-fade", default: "none" }}
+      default="none"
+    >
     <div className="w-full h-full flex flex-col overflow-hidden bg-transparent items-center justify-center select-none relative">
       {/* Regular Heptagon Stage Centered on Screen */}
       <div className="relative w-full h-[calc(100vh-80px)] min-h-[580px] flex items-center justify-center">
@@ -217,77 +218,86 @@ export default function DashboardPage() {
               }}
               onMouseEnter={() => setHoveredId(category.id)}
               onMouseLeave={() => setHoveredId(null)}
+              onFocus={() => setHoveredId(category.id)}
+              onBlur={() => setHoveredId(null)}
               className="absolute z-30"
             >
               {/* Equidistant Heptagon Vertex Card */}
-              <motion.div
-                animate={{
-                  scale: isHovered ? 1.06 : 1,
-                  y: isHovered ? -4 : 0,
-                }}
-                transition={{ duration: 0.2 }}
-                onClick={() => handleOpenCategory(category.id)}
-                className={`relative w-52 sm:w-60 md:w-[250px] overflow-hidden rounded-2xl border ${isHovered
-                  ? "border-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.55)]"
-                  : "border-cyan-500/40 shadow-[0_10px_25px_rgba(0,0,0,0.6)]"
-                  } p-3 transition-all duration-300 cursor-pointer group`}
+              <Link
+                href={`/dashboard/${unitParam}/${category.id}`}
+                transitionTypes={["checklist-navigation"]}
+                aria-label={`Mở danh mục kiểm tra ${category.title}`}
+                className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07132C]"
               >
-                {/* Background Image of Category - Clear & Vivid */}
-                <div className="absolute inset-0 overflow-hidden bg-[#0A162D] pointer-events-none">
-                  {category.bgImage && (
-                    <Image
-                      src={category.bgImage}
-                      alt=""
-                      fill
-                      sizes="260px"
-                      draggable={false}
-                      className={`object-cover object-center transition-[opacity,transform] duration-500 ease-out ${isHovered ? "scale-110 opacity-90" : "scale-100 opacity-75"
-                        }`}
-                    />
-                  )}
-                </div>
-
-                {/* Clear Vignette Overlay - Keeps Photo Vivid While Ensuring 100% Text Readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/20 pointer-events-none" />
-
-                {/* Card Content Container */}
-                <div className="relative z-10">
-                  {/* Top Badge: Short Code Tag */}
-                  <div className="flex items-center justify-end mb-1 text-[9px] font-mono font-bold">
-                    <span className="px-2 py-0.5 rounded bg-blue-950/80 border border-cyan-500/40 text-cyan-200 uppercase tracking-wider">
-                      {category.shortTitle || `LĨNH VỰC ${index + 1}`}
-                    </span>
+                <motion.div
+                  animate={{
+                    scale: isHovered ? 1.06 : 1,
+                    y: isHovered ? -4 : 0,
+                  }}
+                  transition={{ duration: 0.2 }}
+                  className={`relative w-52 sm:w-60 md:w-[250px] overflow-hidden rounded-2xl border ${isHovered
+                    ? "border-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.55)]"
+                    : "border-cyan-500/40 shadow-[0_10px_25px_rgba(0,0,0,0.6)]"
+                    } p-3 transition-all duration-300 cursor-pointer group`}
+                >
+                  {/* Background Image of Category - Clear & Vivid */}
+                  <div className="absolute inset-0 overflow-hidden bg-[#0A162D] pointer-events-none">
+                    {category.bgImage && (
+                      <Image
+                        src={category.bgImage}
+                        alt=""
+                        fill
+                        sizes="260px"
+                        draggable={false}
+                        className={`object-cover object-center transition-[opacity,transform] duration-500 ease-out ${isHovered ? "scale-110 opacity-90" : "scale-100 opacity-75"
+                          }`}
+                      />
+                    )}
                   </div>
 
-                  {/* Icon & Category Title */}
-                  <div className="flex items-start gap-2.5">
-                    <div className="p-2 rounded-xl bg-blue-950/90 border border-cyan-500/40 text-cyan-300 shrink-0 group-hover:scale-110 transition-transform mt-0.5 shadow-sm">
-                      <Icon size={17} />
+                  {/* Clear Vignette Overlay - Keeps Photo Vivid While Ensuring 100% Text Readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/20 pointer-events-none" />
+
+                  {/* Card Content Container */}
+                  <div className="relative z-10">
+                    {/* Top Badge: Short Code Tag */}
+                    <div className="flex items-center justify-end mb-1 text-[9px] font-mono font-bold">
+                      <span className="px-2 py-0.5 rounded bg-blue-950/80 border border-cyan-500/40 text-cyan-200 uppercase tracking-wider">
+                        {category.shortTitle || `LĨNH VỰC ${index + 1}`}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-xs sm:text-[12.5px] font-bold text-white leading-snug drop-shadow group-hover:text-cyan-200 transition-colors">
-                        {category.title}
-                      </h3>
-                      <p className="text-[8px] font-mono text-blue-300/85 uppercase tracking-wider mt-1 leading-tight">
-                        {category.subtitle}
-                      </p>
+
+                    {/* Icon & Category Title */}
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 rounded-xl bg-blue-950/90 border border-cyan-500/40 text-cyan-300 shrink-0 group-hover:scale-110 transition-transform mt-0.5 shadow-sm">
+                        <Icon size={17} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xs sm:text-[12.5px] font-bold text-white leading-snug drop-shadow group-hover:text-cyan-200 transition-colors">
+                          {category.title}
+                        </h3>
+                        <p className="text-[8px] font-mono text-blue-300/85 uppercase tracking-wider mt-1 leading-tight">
+                          {category.subtitle}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action Link Button */}
+                    <div className="mt-2 pt-1.5 border-t border-blue-900/60 flex items-center justify-between text-[9.5px] font-bold text-cyan-300 group-hover:text-cyan-200">
+                      <span>Kiểm tra danh mục</span>
+                      <ArrowRight
+                        size={12}
+                        className="transform group-hover:translate-x-1 transition-transform"
+                      />
                     </div>
                   </div>
-
-                  {/* Action Link Button */}
-                  <div className="mt-2 pt-1.5 border-t border-blue-900/60 flex items-center justify-between text-[9.5px] font-bold text-cyan-300 group-hover:text-cyan-200">
-                    <span>Kiểm tra danh mục</span>
-                    <ArrowRight
-                      size={12}
-                      className="transform group-hover:translate-x-1 transition-transform"
-                    />
-                  </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              </Link>
             </motion.div>
           );
         })}
       </div>
     </div>
+    </ViewTransition>
   );
 }

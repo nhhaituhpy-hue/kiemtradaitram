@@ -9,7 +9,8 @@ import { mockPcccChecklist } from "@/data/pcccChecklist";
 import { mockPcttChecklist } from "@/data/pcttChecklist";
 import { mockAtttChecklist } from "@/data/atttChecklist";
 import { mockBtctChecklist } from "@/data/btctChecklist";
-import { motion, AnimatePresence } from "framer-motion";
+import ChecklistTableSkeleton from "@/components/ChecklistTableSkeleton";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 
 type UploadResponse = {
@@ -33,6 +34,7 @@ const getInitialChecklistData = (categoryId: string): TechChecklistGroup[] => {
 
 export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: { categoryId?: string }) {
   const [data, setData] = useState<TechChecklistGroup[]>(() => getInitialChecklistData(categoryId));
+  const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"pdf" | "img" | null>(null);
   const [activeItem, setActiveItem] = useState<any>(null);
@@ -54,6 +56,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const uploadProgressValueRef = useRef(0);
   const params = useParams();
   const router = useRouter();
+  const shouldReduceMotion = useReducedMotion();
   const unitParam = params?.unit as string;
 
   useEffect(() => {
@@ -81,8 +84,8 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
   const storageKey = `checklistData-${categoryId}`;
 
   useEffect(() => {
+    let cancelled = false;
     const fallbackData = getInitialChecklistData(categoryId);
-    setData(fallbackData);
 
     const fetchTemplateAndData = async () => {
       let initialData: TechChecklistGroup[] = fallbackData;
@@ -120,7 +123,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                 }
               }
             });
-            setData(newData);
+            if (!cancelled) setData(newData);
             return;
           }
         }
@@ -128,10 +131,16 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
         console.warn("Dùng dữ liệu mặc định:", err);
       }
 
-      setData(initialData);
+      if (!cancelled) setData(initialData);
     };
-    
-    fetchTemplateAndData();
+
+    void fetchTemplateAndData().finally(() => {
+      if (!cancelled) setIsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [categoryId, unitParam]);
 
   const handleStatusChange = (groupId: string, itemId: string, refIdx: number, status: string) => {
@@ -645,11 +654,20 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
     }
   };
 
+  if (isLoading) {
+    return <ChecklistTableSkeleton />;
+  }
+
   return (
-    <>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: "easeOut" }}
+    >
       <div className="flex items-center justify-between mb-3">
-        <button 
-          onClick={() => router.push(`/dashboard/${unitParam}`)}
+        <button
+          type="button"
+          onClick={() => router.push(`/dashboard/${unitParam}`, { transitionTypes: ["checklist-navigation"] })}
           className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-blue-600 font-medium px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200/90 shadow-sm transition-all duration-200 cursor-pointer"
         >
           <ArrowLeft size={14} className="text-slate-500" />
@@ -1234,6 +1252,6 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
           </div>
         )}
       </AnimatePresence>
-    </>
+    </motion.div>
   );
 }

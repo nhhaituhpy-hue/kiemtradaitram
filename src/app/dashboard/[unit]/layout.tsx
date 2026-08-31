@@ -1,5 +1,6 @@
 "use client";
 
+import { ViewTransition } from "react";
 import { LogOut, Settings } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import AviationFlightMapBackground from "@/components/AviationFlightMapBackground";
@@ -33,10 +34,18 @@ export default function DashboardLayout({
   return (
     <div className={`h-screen flex flex-col ${isChecklistPage ? "bg-[#F0F5FA]" : "bg-[#070D1E]"} text-slate-800 font-sans overflow-hidden relative`}>
       {/* Global Flight Map Background only for main Dashboard, not for Checklist */}
-      {!isChecklistPage && <AviationFlightMapBackground />}
+      {!isChecklistPage && (
+        <ViewTransition
+          enter={{ "checklist-navigation": "checklist-page-fade", default: "none" }}
+          exit={{ "checklist-navigation": "checklist-page-fade", default: "none" }}
+          default="none"
+        >
+          <AviationFlightMapBackground />
+        </ViewTransition>
+      )}
 
       {/* Header with Dark Navy Glassmorphism */}
-      <header className="h-16 border-b border-blue-900/40 bg-[#070D1E]/85 backdrop-blur-xl flex items-center justify-between px-6 z-50 absolute top-0 w-full shadow-lg shadow-black/20">
+      <header className="dashboard-stable-header h-16 border-b border-blue-900/40 bg-[#070D1E]/85 backdrop-blur-xl flex items-center justify-between px-6 z-50 absolute top-0 w-full shadow-lg shadow-black/20">
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-black tracking-tight drop-shadow-md flex items-center">
             <span className="text-[#e63946] drop-shadow">A</span>
