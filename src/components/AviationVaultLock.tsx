@@ -118,7 +118,7 @@ export default function AviationVaultLock({
               <Database size={44} className="animate-pulse" />
             </div>
             <div>
-              <h3 className="text-xl md:text-2xl font-bold tracking-wider text-white">
+              <h3 className="text-xl md:text-2xl font-cormorant font-medium tracking-wider text-white">
                 TỦ HỒ SƠ KỸ THUẬT ĐÀI TRẠM
               </h3>
               <p className="text-xs font-mono text-blue-300/80 mt-1 uppercase tracking-widest">
@@ -142,7 +142,7 @@ export default function AviationVaultLock({
           {/* Rivets and mechanical panel lines */}
           <div className="flex justify-between items-center opacity-80">
             <div className="w-3 h-3 rounded-full bg-[#2A3E60] border border-[#4A6B9D] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]" />
-            <div className="text-[10px] font-mono font-bold text-cyan-300/80 tracking-wider">
+            <div className="text-[10px] font-mono font-medium text-cyan-300/80 tracking-wider">
               DVOR 1150A - TUH // ATTECH
             </div>
             <div className="w-3 h-3 rounded-full bg-[#2A3E60] border border-[#4A6B9D] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]" />
@@ -175,7 +175,7 @@ export default function AviationVaultLock({
           {/* Rivets and mechanical panel lines */}
           <div className="flex justify-between items-center w-full opacity-80">
             <div className="w-3 h-3 rounded-full bg-[#2A3E60] border border-[#4A6B9D] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]" />
-            <div className="text-[10px] font-mono font-bold text-cyan-300/80 tracking-wider">
+            <div className="text-[10px] font-mono font-medium text-cyan-300/80 tracking-wider">
               DME 1119A - TUH // ATTECH
             </div>
             <div className="w-3 h-3 rounded-full bg-[#2A3E60] border border-[#4A6B9D] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]" />
@@ -235,7 +235,7 @@ export default function AviationVaultLock({
                       <div
                         key={deg}
                         style={{ transform: `rotate(${deg}deg)` }}
-                        className="absolute inset-0 flex justify-center p-2 text-[10px] font-mono font-bold text-cyan-200/90"
+                        className="absolute inset-0 flex justify-center p-2 text-[10px] font-mono font-medium text-cyan-200/90"
                       >
                         <span className="transform -rotate-0">
                           {idx * 10 < 10 ? `0${idx * 10}` : idx * 10}
@@ -269,7 +269,7 @@ export default function AviationVaultLock({
                     : "bg-cyan-400 animate-pulse"
                     }`}
                 />
-                <span className="text-xs font-mono font-bold tracking-widest text-cyan-200">
+                <span className="text-xs font-mono font-medium tracking-widest text-cyan-200">
                   {statusMessage}
                 </span>
               </motion.div>

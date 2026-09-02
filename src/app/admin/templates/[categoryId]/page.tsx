@@ -285,8 +285,8 @@ export default function TemplateBuilderPage() {
     <div className="p-6 md:p-10 pb-32">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight mb-2">Quản trị biểu mẫu</h1>
-          <p className="text-zinc-600 font-medium">Đang chỉnh sửa: <span className="font-bold text-red-600">{catTitle || categoryId}</span></p>
+          <h1 className="text-3xl font-cormorant font-medium text-zinc-900 tracking-tight mb-2">Quản trị biểu mẫu</h1>
+          <p className="text-zinc-600 font-medium">Đang chỉnh sửa: <span className="font-medium text-red-600">{catTitle || categoryId}</span></p>
         </div>
         <div className="flex gap-3">
           <button 
@@ -319,14 +319,14 @@ export default function TemplateBuilderPage() {
             {/* Group Header */}
             <div className="bg-[#EBE9E1] px-6 py-4 flex items-center gap-4">
               <GripVertical className="text-zinc-400 cursor-grab" size={20} />
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white font-bold text-zinc-800 shadow-sm border border-[#E0DED5]">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white font-medium text-zinc-800 shadow-sm border border-[#E0DED5]">
                 {group.order}
               </div>
               <input 
                 type="text" 
                 value={group.title}
                 onChange={(e) => updateGroupTitle(group.id, e.target.value)}
-                className="flex-1 bg-transparent font-bold text-lg text-zinc-900 border-b border-transparent focus:border-[#C3CFA2] focus:outline-none px-2 py-1"
+                className="flex-1 bg-transparent font-medium text-lg text-zinc-900 border-b border-transparent focus:border-[#C3CFA2] focus:outline-none px-2 py-1"
                 placeholder="Tên nhóm đầu mục chính..."
               />
               <button 
@@ -443,7 +443,7 @@ export default function TemplateBuilderPage() {
           <div className="w-12 h-12 rounded-full bg-[#EBE9E1] flex items-center justify-center">
             <Plus size={24} />
           </div>
-          <span className="font-bold text-lg">Thêm nhóm đầu mục mới</span>
+          <span className="font-medium text-lg">Thêm nhóm đầu mục mới</span>
         </button>
       </div>
     </div>

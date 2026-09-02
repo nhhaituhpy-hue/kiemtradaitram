@@ -71,13 +71,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-6 border-b border-[#E0DED5] flex items-center gap-3">
           <Settings className="text-[#7A8A4B]" size={28} />
           <div>
-            <h1 className="font-bold text-lg text-zinc-800 leading-tight">Admin</h1>
-            <p className="text-xs text-zinc-500 font-medium">Hệ thống quản trị</p>
+            <h1 className="font-cormorant font-medium text-xl text-zinc-800 leading-tight">Admin</h1>
+            <p className="text-xs text-zinc-500">Hệ thống quản trị</p>
           </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 px-4 mt-2">
+          <div className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3 px-4 mt-2">
             Danh mục Templates
           </div>
           

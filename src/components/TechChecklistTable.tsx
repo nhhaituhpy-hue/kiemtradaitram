@@ -439,9 +439,19 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
               value={opt} 
               checked={currentStatus === opt}
               onChange={() => handleStatusChange(group.id, item.id, refIdx, opt)}
-              className="w-4 h-4 text-blue-600 bg-white border-slate-300 focus:ring-blue-500 focus:ring-2 cursor-pointer shrink-0"
+              className={`w-4 h-4 bg-white border-slate-300 focus:ring-2 cursor-pointer shrink-0 ${
+                opt.startsWith("Không") 
+                  ? "text-red-600 focus:ring-red-500 accent-red-600" 
+                  : "text-blue-600 focus:ring-blue-500 accent-blue-600"
+              }`}
             />
-            <span className="text-sm text-slate-700 font-normal group-hover:text-blue-700 transition-colors">{opt}</span>
+            <span className={`text-sm font-normal transition-colors ${
+              currentStatus === opt
+                ? (opt.startsWith("Không") ? "text-red-700 font-medium" : "text-blue-700 font-medium")
+                : "text-slate-700 group-hover:text-blue-700"
+            }`}>
+              {opt}
+            </span>
           </label>
         ))}
       </div>
@@ -894,7 +904,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                         {pdfCount > 0 && (
                                           <span
                                             aria-hidden="true"
-                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-medium leading-none text-white shadow-sm"
                                           >
                                             {pdfCount > 99 ? '99+' : pdfCount}
                                           </span>
@@ -914,7 +924,7 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
                                         {imgCount > 0 && (
                                           <span
                                             aria-hidden="true"
-                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-sky-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+                                            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center whitespace-nowrap rounded-full border-2 border-white bg-sky-600 px-1 text-[10px] font-medium leading-none text-white shadow-sm"
                                           >
                                             {imgCount > 99 ? '99+' : imgCount}
                                           </span>

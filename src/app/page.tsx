@@ -72,11 +72,11 @@ export default function LoginPage() {
             {/* Brand & Heading */}
             <div className="flex flex-col items-center mb-4 text-center">
               <div>
-                <h1 className="text-2xl sm:text-2xl font-black tracking-tight flex items-center justify-center">
+                <h1 className="text-3xl sm:text-3xl font-cormorant font-medium tracking-wide flex items-center justify-center">
                   <span className="text-[#e63946] drop-shadow-[0_0_12px_rgba(230,57,70,0.5)]">A</span>
                   <span className="text-cyan-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.5)]">TTECH</span>
                 </h1>
-                <p className="text-[10px] font-bold text-cyan-200/70 tracking-widest uppercase mt-1">
+                <p className="text-[11px] font-cormorant font-light italic text-cyan-200/80 tracking-widest mt-1.5">
                   Sáng tạo và Thích nghi
                 </p>
               </div>
@@ -85,7 +85,7 @@ export default function LoginPage() {
             {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-5" autoComplete="off">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-cyan-200/90 uppercase tracking-wider block">
+                <label className="text-[11px] font-medium text-cyan-200/90 uppercase tracking-wider block">
                   Tên đăng nhập
                 </label>
                 <div className="relative">
@@ -106,7 +106,7 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-cyan-200/90 uppercase tracking-wider block">
+                <label className="text-[11px] font-medium text-cyan-200/90 uppercase tracking-wider block">
                   Mật khẩu
                 </label>
                 <div className="relative">
@@ -139,7 +139,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-[0.98] text-white text-sm font-bold tracking-wide rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase cursor-pointer"
+                  className="w-full flex items-center justify-center py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-[0.98] text-white text-sm font-medium tracking-wide rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase cursor-pointer"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

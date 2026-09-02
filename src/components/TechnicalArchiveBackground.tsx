@@ -199,7 +199,7 @@ export default function TechnicalArchiveBackground({
         <div className="hidden lg:flex flex-col gap-5 opacity-60 transform -rotate-y-12 translate-x-4">
           <div className="w-56 p-4 rounded-xl border border-[#7A6655] bg-[#3B2F27]/65 backdrop-blur-md shadow-lg space-y-2">
             <div className="flex items-center justify-between border-b border-[#635142] pb-1.5">
-              <span className="text-[10px] font-mono font-bold text-amber-200/90 tracking-wider">
+              <span className="text-[10px] font-mono font-medium text-amber-200/90 tracking-wider">
                 CABINET-A // TUH
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-400/90 animate-pulse" />
@@ -225,7 +225,7 @@ export default function TechnicalArchiveBackground({
 
           <div className="w-56 p-4 rounded-xl border border-[#7A6655] bg-[#3B2F27]/65 backdrop-blur-md shadow-lg space-y-2 translate-x-4">
             <div className="flex items-center justify-between border-b border-[#635142] pb-1.5">
-              <span className="text-[10px] font-mono font-bold text-amber-200/90 tracking-wider">
+              <span className="text-[10px] font-mono font-medium text-amber-200/90 tracking-wider">
                 ARCHIVE-B // SMS
               </span>
               <span className="w-2 h-2 rounded-full bg-blue-400/90" />
@@ -247,7 +247,7 @@ export default function TechnicalArchiveBackground({
         <div className="hidden lg:flex flex-col gap-5 opacity-60 transform rotate-y-12 -translate-x-4 items-end">
           <div className="w-56 p-4 rounded-xl border border-[#7A6655] bg-[#3B2F27]/65 backdrop-blur-md shadow-lg space-y-2">
             <div className="flex items-center justify-between border-b border-[#635142] pb-1.5">
-              <span className="text-[10px] font-mono font-bold text-amber-200/90 tracking-wider">
+              <span className="text-[10px] font-mono font-medium text-amber-200/90 tracking-wider">
                 TELEMETRY // AIR-08
               </span>
               <span className="w-2 h-2 rounded-full bg-blue-400/90 animate-pulse" />
@@ -273,7 +273,7 @@ export default function TechnicalArchiveBackground({
 
           <div className="w-56 p-4 rounded-xl border border-[#7A6655] bg-[#3B2F27]/65 backdrop-blur-md shadow-lg space-y-2 -translate-x-4">
             <div className="flex items-center justify-between border-b border-[#635142] pb-1.5">
-              <span className="text-[10px] font-mono font-bold text-amber-200/90 tracking-wider">
+              <span className="text-[10px] font-mono font-medium text-amber-200/90 tracking-wider">
                 SAFETY // PCCC-ATTT
               </span>
               <span className="w-2 h-2 rounded-full bg-amber-400/90" />

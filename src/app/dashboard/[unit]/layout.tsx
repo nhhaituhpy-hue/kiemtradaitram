@@ -47,11 +47,11 @@ export default function DashboardLayout({
       {/* Header with Dark Navy Glassmorphism */}
       <header className="dashboard-stable-header h-16 border-b border-blue-900/40 bg-[#070D1E]/85 backdrop-blur-xl flex items-center justify-between px-6 z-50 absolute top-0 w-full shadow-lg shadow-black/20">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-black tracking-tight drop-shadow-md flex items-center">
+          <h1 className="text-xl font-cormorant font-medium tracking-wide drop-shadow-md flex items-center">
             <span className="text-[#e63946] drop-shadow">A</span>
             <span className="text-blue-400 drop-shadow">TTECH</span>
           </h1>
-          <span className="hidden sm:inline-block ml-3 text-xs font-semibold text-blue-200/80 uppercase tracking-wider border-l border-blue-800/60 pl-3">
+          <span className="hidden sm:inline-block ml-3 text-xs font-medium text-blue-200/80 uppercase tracking-wider border-l border-blue-800/60 pl-3">
             Trung tâm Bảo đảm kỹ thuật
           </span>
         </div>

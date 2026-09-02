@@ -183,10 +183,10 @@ export default function DashboardPage() {
               style={{ animationDuration: "35s" }}
             />
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_#38bdf8] mb-1 animate-pulse" />
-            <span className="text-sm sm:text-base font-black tracking-widest text-white uppercase leading-none">
+            <span className="text-sm sm:text-base font-cormorant font-semibold tracking-widest text-white uppercase leading-none">
               {unitParam.toUpperCase()}
             </span>
-            <span className="text-[8px] font-mono font-bold text-cyan-300 tracking-wider mt-1.5 uppercase">
+            <span className="text-[8px] font-mono font-medium text-cyan-300 tracking-wider mt-1.5 uppercase">
               7 LĨNH VỰC
             </span>
           </div>
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                   {/* Card Content Container */}
                   <div className="relative z-10">
                     {/* Top Badge: Short Code Tag */}
-                    <div className="flex items-center justify-end mb-1 text-[9px] font-mono font-bold">
+                    <div className="flex items-center justify-end mb-1 text-[9px] font-mono font-medium">
                       <span className="px-2 py-0.5 rounded bg-blue-950/80 border border-cyan-500/40 text-cyan-200 uppercase tracking-wider">
                         {category.shortTitle || `LĨNH VỰC ${index + 1}`}
                       </span>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                         <Icon size={17} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-xs sm:text-[12.5px] font-bold text-white leading-snug drop-shadow group-hover:text-cyan-200 transition-colors">
+                        <h3 className="text-[13px] sm:text-sm font-cormorant font-normal text-white leading-snug drop-shadow group-hover:text-cyan-200 transition-colors">
                           {category.title}
                         </h3>
                         <p className="text-[8px] font-mono text-blue-300/85 uppercase tracking-wider mt-1 leading-tight">
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Action Link Button */}
-                    <div className="mt-2 pt-1.5 border-t border-blue-900/60 flex items-center justify-between text-[9.5px] font-bold text-cyan-300 group-hover:text-cyan-200">
+                    <div className="mt-2 pt-1.5 border-t border-blue-900/60 flex items-center justify-between text-[9.5px] font-medium text-cyan-300 group-hover:text-cyan-200">
                       <span>Kiểm tra danh mục</span>
                       <ArrowRight
                         size={12}
