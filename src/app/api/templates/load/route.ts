@@ -3,6 +3,17 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Order indexes are labels such as "1.2" and "1.10", not decimal numbers.
+// Numeric collation keeps each numeric part in natural order while still
+// handling non-numeric labels used by some checklist templates.
+const orderCollator = new Intl.Collator('vi', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+const compareOrderValues = (left: string | number, right: string | number) =>
+  orderCollator.compare(String(left ?? '').trim(), String(right ?? '').trim());
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -14,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     const groups = await prisma.checklistGroup.findMany({
       where: { categoryId },
-      orderBy: { order: 'asc' }, // Sắp xếp theo order, nhưng vì order đang là chuỗi nên có thể phải parse nếu cần. Ta tạm bỏ qua vì DB lấy ra có thể đã sắp xếp.
+      orderBy: { order: 'asc' }, // Initial DB order; normalized below for natural sorting.
       include: {
         items: {
           orderBy: { orderIndex: 'asc' }
@@ -26,20 +37,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: [] });
     }
     
-    // Custom sort vì order là chuỗi "1", "1.1", v.v.
+    // Normalize string-based order values after the database query.
     const sortedGroups = groups.sort((a, b) => {
-      const numA = parseFloat(a.order) || 0;
-      const numB = parseFloat(b.order) || 0;
-      return numA - numB;
+      return compareOrderValues(a.order, b.order);
     });
 
     const formattedGroups = sortedGroups.map(group => ({
       ...group,
       order: Number(group.order),
       items: group.items.sort((a, b) => {
-         const numA = parseFloat(a.orderIndex) || 0;
-         const numB = parseFloat(b.orderIndex) || 0;
-         return numA - numB;
+         return compareOrderValues(a.orderIndex, b.orderIndex);
       }).map(item => ({
         ...item,
         // Match với mock structure
