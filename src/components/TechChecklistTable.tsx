@@ -40,6 +40,20 @@ const REFERENCE_LIST_PREFIX = "checklist-reference-list:v1:";
 const serializeReferenceList = (references: string[]) =>
   `${REFERENCE_LIST_PREFIX}${JSON.stringify(references)}`;
 
+const RED_STATUS_LABELS = new Set([
+  "chưa có",
+  "chưa tốt",
+  "chưa hợp lý",
+  "chưa đáp ứng",
+  "thừa",
+  "thiếu",
+]);
+
+const isNegativeStatus = (status: string) => {
+  const normalizedStatus = status.trim().replace(/\s+/g, " ").toLocaleLowerCase("vi-VN");
+  return normalizedStatus.startsWith("không") || RED_STATUS_LABELS.has(normalizedStatus);
+};
+
 export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: { categoryId?: string }) {
   const [data, setData] = useState<TechChecklistGroup[]>(() => getInitialChecklistData(categoryId));
   const [isLoading, setIsLoading] = useState(true);
@@ -440,29 +454,33 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
     return (
       <div className="flex flex-col gap-2">
-        {opts.map((opt: string) => (
-          <label key={opt} className="flex items-center gap-2 cursor-pointer group w-full">
-            <input 
-              type="radio" 
-              name={`status-${item.id}-${refIdx}`} 
-              value={opt} 
-              checked={currentStatus === opt}
-              onChange={() => handleStatusChange(group.id, item.id, refIdx, opt)}
-              className={`w-4 h-4 bg-white border-slate-300 focus:ring-2 cursor-pointer shrink-0 ${
-                opt.startsWith("Không") 
-                  ? "text-red-600 focus:ring-red-500 accent-red-600" 
-                  : "text-blue-600 focus:ring-blue-500 accent-blue-600"
-              }`}
-            />
-            <span className={`text-sm font-normal transition-colors ${
-              currentStatus === opt
-                ? (opt.startsWith("Không") ? "text-red-700 font-medium" : "text-blue-700 font-medium")
-                : "text-slate-700 group-hover:text-blue-700"
-            }`}>
-              {opt}
-            </span>
-          </label>
-        ))}
+        {opts.map((opt: string) => {
+          const isNegative = isNegativeStatus(opt);
+
+          return (
+            <label key={opt} className="flex items-center gap-2 cursor-pointer group w-full">
+              <input
+                type="radio"
+                name={`status-${item.id}-${refIdx}`}
+                value={opt}
+                checked={currentStatus === opt}
+                onChange={() => handleStatusChange(group.id, item.id, refIdx, opt)}
+                className={`w-4 h-4 bg-white border-slate-300 focus:ring-2 cursor-pointer shrink-0 ${
+                  isNegative
+                    ? "text-red-600 focus:ring-red-500 accent-red-600"
+                    : "text-blue-600 focus:ring-blue-500 accent-blue-600"
+                }`}
+              />
+              <span className={`text-sm font-normal transition-colors ${
+                currentStatus === opt
+                  ? (isNegative ? "text-red-700 font-medium" : "text-blue-700 font-medium")
+                  : "text-slate-700 group-hover:text-blue-700"
+              }`}>
+                {opt}
+              </span>
+            </label>
+          );
+        })}
       </div>
     );
   };
