@@ -22,6 +22,14 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      // Keep the existing item ids so a template save can also repair stale
+      // reference copies already stored in inspections.
+      const existingItems = await tx.checklistItem.findMany({
+        where: { group: { categoryId } },
+        select: { id: true },
+      });
+      const existingItemIds = new Set(existingItems.map((item) => item.id));
+
       const payloadGroupIds = groups.map((g: any) => g.id);
 
       // 1. Xóa các Group không còn trong danh sách mới
@@ -59,6 +67,8 @@ export async function POST(request: NextRequest) {
 
         // Upsert từng Item
         for (const item of group.items) {
+          const nextReference = item.reference || null;
+
           await tx.checklistItem.upsert({
             where: { id: item.id },
             update: {
@@ -66,7 +76,7 @@ export async function POST(request: NextRequest) {
               title: item.title,
               statusOptions: item.statusOptions || null,
               // @ts-ignore
-              reference: item.reference || null,
+              reference: nextReference,
             },
             create: {
               id: item.id,
@@ -75,9 +85,18 @@ export async function POST(request: NextRequest) {
               title: item.title,
               statusOptions: item.statusOptions || null,
               // @ts-ignore
-              reference: item.reference || null,
+              reference: nextReference,
             }
           });
+
+          // The template is the source of truth for reference rows. Sync all
+          // existing inspection copies so old rows cannot reappear on reload.
+          if (existingItemIds.has(item.id)) {
+            await tx.inspectionResult.updateMany({
+              where: { checklistItemId: item.id },
+              data: { reference: nextReference },
+            });
+          }
         }
       }
     });

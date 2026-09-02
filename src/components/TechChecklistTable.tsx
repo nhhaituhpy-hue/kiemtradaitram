@@ -33,6 +33,13 @@ const getInitialChecklistData = (categoryId: string): TechChecklistGroup[] => {
   return mockTechChecklist;
 };
 
+// Legacy templates use newlines to separate reference rows. Edited rows are
+// stored with an explicit prefix so newlines inside one row remain content.
+const REFERENCE_LIST_PREFIX = "checklist-reference-list:v1:";
+
+const serializeReferenceList = (references: string[]) =>
+  `${REFERENCE_LIST_PREFIX}${JSON.stringify(references)}`;
+
 export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: { categoryId?: string }) {
   const [data, setData] = useState<TechChecklistGroup[]>(() => getInitialChecklistData(categoryId));
   const [isLoading, setIsLoading] = useState(true);
@@ -185,7 +192,9 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
           const item = newData[groupIndex].items[itemIndex];
           const refs = getReferences(item.reference);
           refs[refIdx] = editingRef.value;
-          item.reference = refs.join('\n');
+          // Keep Shift+Enter line breaks inside this reference row instead of
+          // letting the renderer interpret them as new rows.
+          item.reference = serializeReferenceList(refs);
         }
       }
       return newData;
@@ -460,6 +469,18 @@ export default function TechChecklistTable({ categoryId = "quan-ly-ky-thuat" }: 
 
   const getReferences = (refString: string) => {
     if (!refString) return [];
+
+    if (refString.startsWith(REFERENCE_LIST_PREFIX)) {
+      try {
+        const parsed: unknown = JSON.parse(refString.slice(REFERENCE_LIST_PREFIX.length));
+        if (Array.isArray(parsed) && parsed.every((reference): reference is string => typeof reference === "string")) {
+          return parsed.map((reference) => reference.trim()).filter(Boolean);
+        }
+      } catch {
+        // Fall back to the legacy newline-separated format below.
+      }
+    }
+
     return refString.split('\n').map(r => r.trim()).filter(Boolean);
   };
 
